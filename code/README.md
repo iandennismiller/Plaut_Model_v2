@@ -3,6 +3,7 @@
 ## How to Use the Configuration File
 
 Note: For `str` type parameters, quotation marks `'`, `"` are not required.
+
 Note: For `list` type parameters, square brakets `[]` are not required.
 
 ### General Settings (under `[general]`)
