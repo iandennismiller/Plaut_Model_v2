@@ -13,6 +13,10 @@ Last Updated    : May 04, 2020
     - simulation label is added to plots
 
 === UPDATE NOTES ===
+ > May 07, 2020
+    - Using pandas DataFrames result in slower run times in later iterations,
+      so this is replaced with a dictionary as main results storage method
+    - add compression on csv file
  > May 06, 2020
     - rewrite Results class using pandas DataFrame
  > May 05, 2020
@@ -99,9 +103,7 @@ class Results():
                 self.values[key] += values_dict[key]
             else:
                 self.values[key] += [values_dict[key]] * len(indices)
-        
-
-
+    
     def append_column(self, label, values):
         """
         Adds a *single* column to the dictionary, use add_columns for multiple columns
@@ -168,112 +170,5 @@ class Results():
         Keyword Arguments:
             index_label {str} -- label for index column (default: {"epoch"})
         """
-        df = pd.DataFrame(data=self.values, index=self.index)
-        df.to_csv("{}/warping-dilution-{}.csv".format(self.results_dir, self.sim_label), index_label=index_label)
-      
-
-'''
-class Results():
-    def __init__(self, results_dir, sim_label="", title="", xlabel="", ylabel="", categories=[""], anchor=None):
-        """
-        Initializes a class for storing, plotting, and saving data
-
-        Arguments:
-            results_dir {str} -- path to directory for saving plots and data
-
-        Keyword Arguments:
-            sim_label {str} -- simulation label for annotating plots (default: {""})
-            title {str} -- title for plotting (default: {""})
-            xlabel {str} -- x-axis label for plotting (default: {""})
-            ylabel {str} -- y-axis label for plotting (default: {""})
-            categories {list} -- categories of y data (default: {[""]})
-            anchor {int} -- epoch that anchors are added, for annotation on plot (default: {None})
-        """
-        self.x = []
-        self.y = [[] for i in categories]
-        self.title = title
-        self.xlabel = xlabel
-        self.ylabel = ylabel
-        self.sim_label = sim_label
-        self.categories = categories
-        self.results_dir = results_dir
-        self.anchor = anchor
-        
-    
-    def __len__(self):
-        """
-        Returns the number of data points stored
-        """
-        return len(self.x)
-    
-    def append(self, x, y):
-        """
-        Adds a datapoint
-
-        Arguments:
-            x {list} -- list of the x-values of datapoint
-            y {list} -- list of the lists of y-values of the datapoint
-        """
-        if type(x) != list:
-            x = [x]
-        
-        if type(y) != list:
-            y = [[y]]
-
-        assert len(y) == len(self.categories), "ERROR: The y data given does not match the number of categories."
-
-        # add datapoints
-        self.x += x
-        for i in range(len(self.categories)):
-            if type(y[i]) == list:
-                assert len(y[i]) == len(x), "ERROR: The length of {} given does not match the length of x".format(self.categories[i])
-                self.y[i]+= y[i]
-            else:
-                self.y[i] += ([y[i]] * len(x))
-    
-    def lineplot(self, save=False):
-        """
-        Creates a Line Plot of all the datapoints
-
-        NOTE: the data must be numeric for this function to work properly
-
-        Keyword Arguments:
-            save {bool} -- set to True to save a copy of the figure (default: {False})
-        """
-        fig, ax = plt.subplots()
-        
-        # plot for each category
-        for i in range(len(self.categories)):
-            ax.plot(self.x, self.y[i], label=self.categories[i])
-        
-        # axis labels, gridlines, and title
-        plt.xlabel(self.xlabel)
-        plt.ylabel(self.ylabel)
-        plt.grid(b=True, which='both', axis='both')
-        plt.title(self.title)
-
-        # add legend if needed
-        if self.categories != [""]:
-            plt.legend(loc='best')
-        
-        # add line for anchors if needed
-        if max(self.x) > self.anchor:
-            plt.axvline(x=self.anchor, color='red', lw=0.5)
-        
-        # annotate with simulation label
-        plt.text(0.01, 0.01, self.sim_label, fontsize=8, transform=ax.transAxes)
-
-        # ensure everything fits, save, and close
-        plt.tight_layout()
-        plt.savefig("{}/{} {:03d}.png".format(self.results_dir, self.title, self.x[-1]), dpi=200)
-        plt.close()
-    
-    def save_data(self):
-        results = {'label': self.sim_label, self.xlabel: self.x}
-        for i in range(len(self.categories)):
-            results[self.categories[i]] = self.y[i]
-
-        df = pd.DataFrame(data=results)
-
-        df.to_csv("{}/{}.csv".format(self.results_dir, self.title), index=False)
-'''
+        df = pd.DataFrame(data=self.values, index=self.index) # create pandas dataframe
+        df.to_csv("{}/warping-dilution-{}.csv.gz".format(self.results_dir, self.sim_label), index_label=index_label) #save as compressed csv
