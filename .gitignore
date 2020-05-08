@@ -1,0 +1,4 @@
+results/*
+!results/README.md
+code/__pycache__
+code/.vscode
