@@ -89,7 +89,7 @@ where `X` is an positive integer (starting from 1) denoting the order of the opt
 > **`start_epoch`** 
 * Type: `int`
 * Description: epoch number to start using the optimizer
-* Note: `[optim1]` **must** have `start_epoch = 1`
+* Note: `[optim1]` **must** have `start_epoch = 1` unless a checkpoint is loaded, in which case, the last used optimizer will continue to be used.
 * Required
 > **`optimizer`**
 * Type: `str`
