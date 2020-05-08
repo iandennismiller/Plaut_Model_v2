@@ -25,6 +25,9 @@ Last Updated    : May 03, 2020
  > May 07, 2020
     - Edit method of loading parameters from config file
     - add saving of output data in csv
+    - modify anchor frequency to be user adjustible
+    - adjust code based on changes in the results class
+    - add additional docstrings for functions
  > May 06, 2020
     - adjust code based on changes in the results class
  > May 05, 2020
@@ -111,7 +114,7 @@ class Simulator():
         self.anchor_filepath = config['dataset']['anchor']
         self.probe_filepath = config['dataset']['probe']
         self.anchor_sets = [int(x) for x in config['dataset']['anchor_sets'].split(',')]
-        self.anchor_base_freq = int(config['dataset']['anc_freq'])
+        self.anchor_base_freq = float(config['dataset']['anc_freq'])
         self.plaut_types = [x.strip() for x in config['dataset']['track_plaut_types'].split(',')]
         self.anchor_types = [x.strip() for x in config['dataset']['track_anchor_types'].split(',')]
         self.probe_types = [x.strip() for x in config['dataset']['track_probe_types'].split(',')]
