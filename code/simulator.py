@@ -151,7 +151,7 @@ class Simulator():
         self.date = now.strftime("%b").lower()+now.strftime("%d")
         
         self.dilution = len(self.anchor_sets)
-        self.order = 1 if 1 in self.anchor_sets else 3
+        self.order = 1 if 1 in self.anchor_sets else max(self.anchor_sets)
 
         # set simulation label
         self.label += "-S{}D{}O{}-{}".format(self.random_seed, self.dilution, self.order, self.date)
@@ -211,7 +211,7 @@ class Simulator():
         probe_accuracy = Results(results_dir=self.rootdir+"/Probe Accuracy", sim_label=self.label, title="Probe Accuracy",
                                  xlabel="Epoch", ylabel="Accuracy", categories=self.probe_types, anchor=self.anchor_epoch)
         output_data = Results(results_dir=self.rootdir, sim_label=self.label, title="Simulation Results", xlabel='epoch',
-                              categories=['example_id', 'orth', 'phon', 'category', 'correct'])
+                              categories=['example_id', 'orth', 'phon', 'category', 'correct', 'anchors_added'])
         time_data = Results(results_dir=self.rootdir, sim_label=self.label, title="Running Time", xlabel="Epoch", ylabel="Time (s)", anchor=self.anchor_epoch)
 
         start_epoch = 1
@@ -249,7 +249,8 @@ class Simulator():
                 'orth': data['orth'],
                 'phon': data['phon'], 
                 'category': data['type'],
-                'correct': compare})
+                'correct': compare,
+                'anchors_added': [1 if epoch > self.anchor_epoch else 0] * len(compare)})
             
             # anchor dataset
             correct, total = np.zeros(len(self.anchor_types)), np.zeros(len(self.anchor_types))
@@ -271,7 +272,8 @@ class Simulator():
                 'orth': data['orth'],
                 'phon': data['phon'], 
                 'category': data['type'],
-                'correct': compare})
+                'correct': compare,
+                'anchors_added': [1 if epoch > self.anchor_epoch else 0] * len(compare)})
             
             # probe dataset
             correct, total = np.zeros(len(self.probe_types)), np.zeros(len(self.probe_types))
@@ -286,7 +288,8 @@ class Simulator():
                 'orth': data['orth'],
                 'phon': data['phon'], 
                 'category': data['type'],
-                'correct': compare})
+                'correct': compare,
+                'anchors_added': [1 if epoch > self.anchor_epoch else 0] * len(compare)})
             
             # save probe accuracy results
             probe_accuracy.append_row(epoch, (correct/total).tolist())
@@ -322,9 +325,7 @@ class Simulator():
             'error': [0] * len(output_data),
             'random_seed': [self.random_seed] * len(output_data),
             'dilution': [self.dilution] * len(output_data),
-            'order': [self.order] * len(output_data),
-            'anchors_added': [0] * (self.anchor_epoch - start_epoch + 1) * total_samples +
-                             [1] * min((self.total_epochs - self.anchor_epoch), (self.total_epochs - start_epoch + 1)) * total_samples
+            'order': [self.order] * len(output_data)
         })
         
         for key in ['optimizer', 'learning_rate', 'momentum', 'weight_decay']:
@@ -333,7 +334,7 @@ class Simulator():
                 epoch_start = max(start_epoch, int(self.optim_config['start_epoch'][i])) # start of optimizer config
                 # end of optimizer config is next item in start, or if no more items, then end is total epochs
                 try:
-                    epoch_end = int(self.optim_config['start_epoch'][i+1])
+                    epoch_end = min(int(self.optim_config['start_epoch'][i+1]), self.total_epochs + 1)
                 except:
                     epoch_end = self.total_epochs + 1
                 for k in range(total_samples): # once per every word
@@ -441,6 +442,6 @@ class Simulator():
 """
 TESTING AREA
 """
-
-sim = Simulator("config.cfg")
-sim.train()
+if __name__ == '__main__':
+    sim = Simulator("config.cfg")
+    sim.train()
