@@ -13,6 +13,8 @@ Last Updated    : May 04, 2020
     - simulation label is added to plots
 
 === UPDATE NOTES ===
+ > May 08, 2020
+    - Update lineplot function to plot correct index values when checkpoints are used
  > May 07, 2020
     - Using pandas DataFrames result in slower run times in later iterations,
       so this is replaced with a dictionary as main results storage method
@@ -138,7 +140,7 @@ class Results():
         
         # plot for each column
         for key in self.values.keys():
-            ax.plot(self.values[key], label=key)
+            ax.plot(self.index, self.values[key], label=key)
 
 
         # axis labels, gridlines, and title
