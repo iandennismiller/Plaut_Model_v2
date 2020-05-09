@@ -64,15 +64,18 @@ In progress.
 * Requird (recommended: `10`)
 > **`track_plaut_types`**
 * Type: `list`
-* Description: word types to calculate accuracy for in the Plaut Dataset; accuracy across all words will be calculated if left blank
+* Description: word types to calculate accuracy for in the Plaut Dataset; accuracy for all word types will be calculated if left blank
+* Note: To calculate average accuracy across all types, use `All`
 * Optional (recommended: `HEC, HRI, HFE, LEC, LFRI, LFE`)
 > **`track_anchor_types`**
 * Type: `list`
-* Description: word types to calculate accuracy for anchors; accuracy across all anchors will be calculated if left blank
+* Description: word types to calculate accuracy for anchors; accuracy for all types anchors will be calculated if left blank
+* Note: To calculate average accuracy across all types, use `All`
 * Optional (recommended: `<blank>`)
 > **`track_probe_types`**
 * Type: `list`
-* Description: word types to calculate accuracy for probes; accuracy across all probes will be calculated if left blank
+* Description: word types to calculate accuracy for probes; accuracy for all types probes will be calculated if left blank
+* Note: To calculate average accuracy across all types, use `All`
 * Optional (recommended: `<blank>`)
 
 ### Optimizer
