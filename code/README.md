@@ -35,8 +35,8 @@ Note: For `list` type parameters, square brakets `[]` are not required.
 * Required (recommended: `700`)
 > **`anchor_epoch`**
 * Type: `int`
-* Description: number of epochs before adding anchors 
-* Required (recommended: `350`)
+* Description: number of epochs *before* adding anchors 
+* Required (recommended: `350`, i.e. anchors are added at the 351st epoch)
 
 ### Checkpoint Settings (under `[checkpoint]`)
 In progress.
