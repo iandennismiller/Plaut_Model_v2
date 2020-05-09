@@ -25,16 +25,24 @@ def create_simulation_folder(dir_label):
         os.mkdir(rootdir)
     except FileExistsError:
         while True:
-            delete = input("{} already exists. Delete? (Y/N)".format(rootdir))
-            if delete in ['Y', 'N', 'y', 'n']:
+            replace = input("{} already exists. Replace? (Y/N)".format(rootdir))
+            if replace in ['Y', 'N', 'y', 'n']:
                 break
-        if delete in ['Y', 'y']:
+        if replace in ['Y', 'y']:
             print("Overwriting existing directory...")
             shutil.rmtree(rootdir)
             os.mkdir(rootdir)
         else:
-            print("Simulation Exiting...")
-            exit()
+            i = 1
+            while True:
+                try:
+                    new_rootdir = f"{rootdir}_{i}"
+                    os.mkdir(new_rootdir)
+                    break
+                except:
+                    i += 1
+            rootdir = new_rootdir
+            dir_label = f"{dir_label}_{i}"
     for subdir in ["Training Loss", "Training Accuracy", "Anchor Accuracy", "Probe Accuracy"]:
         os.mkdir(rootdir+"/"+subdir)
-    return rootdir
+    return rootdir, dir_label
