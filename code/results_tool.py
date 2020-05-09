@@ -187,8 +187,6 @@ class Results():
         plt.savefig("{}/{} Bar {:03d}.png".format(self.results_dir, self.title, max(self.index)), dpi=200)
         plt.close()
        
-        
-    
     def save_data(self, index_label="epoch"):
         """
         Saves results as compressed csv file
@@ -196,5 +194,6 @@ class Results():
         Keyword Arguments:
             index_label {str} -- label for index column (default: {"epoch"})
         """
+        
         df = pd.DataFrame(data=self.values, index=self.index) # create pandas dataframe
         df.to_csv("{}/warping-dilution-{}.csv.gz".format(self.results_dir, self.sim_label), index_label=index_label) #save as compressed csv
