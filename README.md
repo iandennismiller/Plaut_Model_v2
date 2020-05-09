@@ -1,8 +1,6 @@
 # Plaut_Model_v2
 
 ## Features to be Added
-* Bar plots for accuracy at end of training
-* Saving and Loading checkpoints
 * Script to run simulation
 * Update `README.md`
 
