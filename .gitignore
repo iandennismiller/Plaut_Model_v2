@@ -2,3 +2,5 @@ results/*
 !results/README.md
 code/__pycache__
 code/.vscode
+checkpoints/*
+!checkpoints/README.md
