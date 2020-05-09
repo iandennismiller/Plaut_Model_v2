@@ -11,6 +11,9 @@ Last Updated    : May 03, 2020
     - make_folder function renamed to create_simulation_folder, and now forces a folder label to be given
 
 === UPDATE NOTES ===
+ > May 08, 2020
+    - update create_simulation_folder to create new folder with suffix if folder already exists
+      and user does not want to delete the original folder
  > May 03, 2020
     - file created
 """
