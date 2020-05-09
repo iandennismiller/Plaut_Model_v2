@@ -24,6 +24,7 @@ Last Updated    : May 03, 2020
 === UPDATE NOTES ===
  > May 08, 2020
     - add saving and loading checkpoints
+    - add accuracy bar plots at end of training
  > May 07, 2020
     - Edit method of loading parameters from config file
     - add saving of output data in csv
@@ -341,6 +342,10 @@ class Simulator():
 
         output_data.save_data(index_label='Epoch')
         time_data.lineplot()
+        plaut_accuracy.barplot()
+        anchor_accuracy.barplot()
+        probe_accuracy.barplot()
+        
                       
     def set_optimizer(self, i):
         """

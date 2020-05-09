@@ -15,6 +15,8 @@ Last Updated    : May 04, 2020
 === UPDATE NOTES ===
  > May 08, 2020
     - Update lineplot function to plot correct index values when checkpoints are used
+    - Remove save parameter from lineplot function -> *must* be saved
+    - Add function for creating and saving bar plots
  > May 07, 2020
     - Using pandas DataFrames result in slower run times in later iterations,
       so this is replaced with a dictionary as main results storage method
@@ -126,14 +128,11 @@ class Results():
         """
         self.values.update(values_dict)
 
-    def lineplot(self, save=False):
+    def lineplot(self):
         """
         Creates a Line Plot of all the datapoints
 
-        NOTE: the data must be numeric for this function to work properly
-
-        Keyword Arguments:
-            save {bool} -- set to True to save a copy of the figure (default: {False})
+        NOTE: the data must be numeric for this function to work as intended
         """
         
         fig, ax = plt.subplots()
@@ -164,6 +163,31 @@ class Results():
         plt.tight_layout()
         plt.savefig("{}/{} {:03d}.png".format(self.results_dir, self.title, max(self.index)), dpi=200)
         plt.close()
+
+    def barplot(self):
+        """
+        Creates a Bar Plot for current epoch
+
+        NOTE: the data must be numeric for this function to work as intended
+        """
+        # create figure
+        plt.figure()
+        
+        # plot bars
+        for key in self.values.keys():
+            plt.bar(key, self.values[key][-1])
+        
+        # axis labels and title
+        plt.xlabel('Category')
+        plt.ylabel(self.ylabel)
+        plt.title(self.title)
+        
+        # ensure everything fits, save, and close
+        plt.tight_layout()
+        plt.savefig("{}/{} Bar {:03d}.png".format(self.results_dir, self.title, max(self.index)), dpi=200)
+        plt.close()
+       
+        
     
     def save_data(self, index_label="epoch"):
         """
