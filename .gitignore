@@ -8,5 +8,6 @@ checkpoints/*
 # ignore
 src/__pycache__
 src/.vscode
+.vscode
 .ipynb_checkpoints
 .empty
