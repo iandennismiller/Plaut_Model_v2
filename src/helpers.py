@@ -11,6 +11,8 @@ Last Updated    : May 03, 2020
     - make_folder function renamed to create_simulation_folder, and now forces a folder label to be given
 
 === UPDATE NOTES ===
+ > May 24, 2010
+    - Move helper functions from plaut_model.py into this file
  > May 08, 2020
     - update create_simulation_folder to create new folder with suffix if folder already exists
       and user does not want to delete the original folder
@@ -49,3 +51,17 @@ def create_simulation_folder(dir_label):
     for subdir in ["Training Loss", "Training Accuracy", "Anchor Accuracy", "Probe Accuracy"]:
         os.mkdir(rootdir+"/"+subdir)
     return rootdir, dir_label
+
+def write_config_file(anchor, seed):
+    config = configparser.ConfigParser()
+    config.read('config.cfg')
+
+    config['dataset']['anchor_sets'] = str(anchor).strip('[]')
+    config['training']['random_seed'] = str(seed)
+
+    with open('config.cfg', 'w') as configfile:
+        config.write(configfile)
+        
+def run_simulation():
+    sim = Simulator("config.cfg")
+    sim.train()
