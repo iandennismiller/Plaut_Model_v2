@@ -5,9 +5,12 @@ checkpoints/*
 !results/README.md
 !checkpoints/README.md
 
-# ignore
+# ignore irrelevant folders
 src/__pycache__
 src/.vscode
 .vscode
 .ipynb_checkpoints
 .empty
+
+# ignore test file
+test.ipynb
