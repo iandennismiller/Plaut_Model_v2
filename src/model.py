@@ -16,6 +16,8 @@ Last Updated    : May 03, 2020
 
 
 === UPDATE NOTES ===
+ > May 24, 2020
+    - modify forward pass to return hidden layer activation as well
  > May 03, 2020
     - file created, code copied from Plaut_Model (v1)
 """
@@ -48,6 +50,7 @@ class Plaut_Net(nn.Module):
     def forward(self, x):
         """
         Implements forward pass of the model
+        Returns hidden layer activations, and output layer activations
         """
         x = torch.sigmoid(self.layer1(x))
-        return torch.sigmoid(self.layer2(x))
+        return x, torch.sigmoid(self.layer2(x))
