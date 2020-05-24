@@ -1,6 +1,12 @@
+# do not include results and saved checkpoints
 results/*
-!results/README.md
-code/__pycache__
-code/.vscode
 checkpoints/*
+# but, include the readme file
+!results/README.md
 !checkpoints/README.md
+
+# ignore
+src/__pycache__
+src/.vscode
+.ipynb_checkpoints
+.empty
