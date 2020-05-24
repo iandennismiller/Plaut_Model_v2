@@ -13,6 +13,7 @@ Last Updated    : May 03, 2020
 === UPDATE NOTES ===
  > May 24, 2010
     - Move helper functions from plaut_model.py into this file
+    - update string format, filepath, import statements
  > May 08, 2020
     - update create_simulation_folder to create new folder with suffix if folder already exists
       and user does not want to delete the original folder
@@ -25,12 +26,12 @@ import shutil
 
 def create_simulation_folder(dir_label):
     # create a new folder for every run
-    rootdir = "../results/"+dir_label
+    rootdir = "results/"+dir_label
     try:
         os.mkdir(rootdir)
     except FileExistsError:
         while True:
-            replace = input("{} already exists. Replace? (Y/N)".format(rootdir))
+            replace = input(f"{rootdir} already exists. Replace? (Y/N)")
             if replace in ['Y', 'N', 'y', 'n']:
                 break
         if replace in ['Y', 'y']:
@@ -51,17 +52,3 @@ def create_simulation_folder(dir_label):
     for subdir in ["Training Loss", "Training Accuracy", "Anchor Accuracy", "Probe Accuracy"]:
         os.mkdir(rootdir+"/"+subdir)
     return rootdir, dir_label
-
-def write_config_file(anchor, seed):
-    config = configparser.ConfigParser()
-    config.read('config.cfg')
-
-    config['dataset']['anchor_sets'] = str(anchor).strip('[]')
-    config['training']['random_seed'] = str(seed)
-
-    with open('config.cfg', 'w') as configfile:
-        config.write(configfile)
-        
-def run_simulation():
-    sim = Simulator("config.cfg")
-    sim.train()

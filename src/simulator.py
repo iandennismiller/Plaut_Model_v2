@@ -22,6 +22,8 @@ Last Updated    : May 03, 2020
     - anchors are now placed in one single csv file, and sets are chosen in config.cfg rather than making different csv files
 
 === UPDATE NOTES ===
+ > May 24, 2020
+    - update string format, filepath, import statements
  > May 08, 2020
     - add saving and loading checkpoints
     - add accuracy bar plots at end of training
@@ -52,10 +54,10 @@ import datetime
 import numpy as np
 import configparser
 
-from dataset import Plaut_Dataset
-from model import Plaut_Net
-from helpers import *
-from results_tool import Results
+from src.dataset import Plaut_Dataset
+from src.model import Plaut_Net
+from src.helpers import *
+from src.results_tool import Results
 
 
 
@@ -75,7 +77,7 @@ class Simulator():
         self.load_data() # load data
         print("--Datasets Loaded")
         self.rootdir, self.label = create_simulation_folder(self.label) # create simulation folder
-        print("--Simulation Results will be stored in: {}".format(self.rootdir))
+        print(f"--Simulation Results will be stored in: {self.rootdir}")
         self.model = Plaut_Net() # initialize model
         print("--Model Initialized")
     
@@ -154,7 +156,7 @@ class Simulator():
         self.order = 1 if 1 in self.anchor_sets else max(self.anchor_sets)
 
         # set simulation label
-        self.label += "-S{}D{}O{}-{}".format(self.random_seed, self.dilution, self.order, self.date)
+        self.label += f"-S{self.random_seed}D{self.dilution}O{self.order}-{self.date}"
 
     def load_data(self):
         """
@@ -312,7 +314,7 @@ class Simulator():
             # print statistics
             if epoch % self.print_freq == 0:
                 epoch_time = time.time() - epoch_time
-                print("[EPOCH {}] \t loss: {:.4f} \t time: {:.4f}".format(epoch, epoch_loss.item(), epoch_time))
+                print(f"[EPOCH {epoch}] \t loss: {round(epoch_loss.item(), 4)} \t time: {round(epoch_time, 4)}")
                 time_data.append_row(epoch, epoch_time)
             
             # save checkpoint
@@ -423,7 +425,7 @@ class Simulator():
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'optimizer_name': optimizer.__class__.__name__
-        }, f"../checkpoints/{self.label}_{epoch}.tar")
+        }, f"checkpoints/{self.label}_{epoch}.tar")
 
     def load_checkpoint(self):
         checkpoint = torch.load(self.checkpoint_file)
@@ -443,5 +445,5 @@ class Simulator():
 TESTING AREA
 """
 if __name__ == '__main__':
-    sim = Simulator("config.cfg")
+    sim = Simulator("src/config.cfg")
     sim.train()

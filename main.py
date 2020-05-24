@@ -12,15 +12,14 @@ Last Updated    : May 03, 2020
 
 === UPDATE NOTES ===
  > May 24, 2020
-    - move helper functions to helpers.py
+    - move to root directory, update import statements
  > May 08, 2020
     - file created
 """
 
 import argparse
 import configparser
-from simulator import Simulator
-from helpers import *
+from src.simulator import Simulator
 
 parser = argparse.ArgumentParser(description='This script will run a series of \
     simulations with all possible combinations of anchor sets and random seeds given. \
@@ -31,6 +30,19 @@ parser.add_argument('-anchor', '-a', nargs=1, type=int, required=True, \
 parser.add_argument('-seed', '-s', nargs='+', type=int, required=True, \
     help='the random seeds to be used', metavar='S')
 
+def write_config_file(anchor, seed):
+    config = configparser.ConfigParser()
+    config.read('src/config.cfg')
+
+    config['dataset']['anchor_sets'] = str(anchor).strip('[]')
+    config['training']['random_seed'] = str(seed)
+
+    with open('src/config.cfg', 'w') as configfile:
+        config.write(configfile)
+        
+def run_simulation():
+    sim = Simulator("src/config.cfg")
+    sim.train()
 
 if __name__ == "__main__":
     # parse and extract arguments

@@ -196,4 +196,4 @@ class Results():
         """
         
         df = pd.DataFrame(data=self.values, index=self.index) # create pandas dataframe
-        df.to_csv("{}/warping-dilution-{}.csv.gz".format(self.results_dir, self.sim_label), index_label=index_label) #save as compressed csv
+        df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}.csv.gz", index_label=index_label) #save as compressed csv
