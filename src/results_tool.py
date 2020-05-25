@@ -13,6 +13,9 @@ Last Updated    : May 04, 2020
     - simulation label is added to plots
 
 === UPDATE NOTES ===
+ > May 24, 2020
+    - annotate csv file with title
+    - add .shape attribute
  > May 08, 2020
     - Update lineplot function to plot correct index values when checkpoints are used
     - Remove save parameter from lineplot function -> *must* be saved
@@ -63,6 +66,7 @@ class Results():
         self.values = {}
         for key in categories:
             self.values[key] = []
+        self.shape = (0, len(categories))
 
     def __len__(self):
         """
@@ -87,6 +91,8 @@ class Results():
         
         for key, value in zip(self.values.keys(), values): # add the values based on the respective keys
             self.values[key].append(value)
+        
+        self.shape = (self.shape[0]+1, self.shape[1])
     
     def add_rows(self, indices, values_dict):
         """
@@ -107,6 +113,8 @@ class Results():
                 self.values[key] += values_dict[key]
             else:
                 self.values[key] += [values_dict[key]] * len(indices)
+        
+        self.shape = (self.shape[0]+len(indices), self.shape[1])
     
     def append_column(self, label, values):
         """
@@ -118,6 +126,8 @@ class Results():
         """
 
         self.values[label] = values
+        
+        self.shape = (self.shape[0], self.shape[1]+1)
     
     def add_columns(self, values_dict):
         """
@@ -127,6 +137,8 @@ class Results():
             values_dict {[type]} -- dictionary consisting of keys and values representing the columns to be added
         """
         self.values.update(values_dict)
+        
+        self.shape = (self.shape[0], self.shape[1]+1)
 
     def lineplot(self):
         """
@@ -161,7 +173,7 @@ class Results():
 
         # ensure everything fits, save, and close
         plt.tight_layout()
-        plt.savefig("{}/{} {:03d}.png".format(self.results_dir, self.title, max(self.index)), dpi=200)
+        plt.savefig(f"{self.results_dir}/{self.title} {max(self.index):03d}.png", dpi=200)
         plt.close()
 
     def barplot(self):
@@ -184,7 +196,7 @@ class Results():
         
         # ensure everything fits, save, and close
         plt.tight_layout()
-        plt.savefig("{}/{} Bar {:03d}.png".format(self.results_dir, self.title, max(self.index)), dpi=200)
+        plt.savefig(f"{self.results_dir}/{self.title} Bar {max(self.index):03d}.png", dpi=200)
         plt.close()
        
     def save_data(self, index_label="epoch"):
@@ -196,4 +208,4 @@ class Results():
         """
         
         df = pd.DataFrame(data=self.values, index=self.index) # create pandas dataframe
-        df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}.csv.gz", index_label=index_label) #save as compressed csv
+        df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.csv.gz", index_label=index_label) #save as compressed csv
