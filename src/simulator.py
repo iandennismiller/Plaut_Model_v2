@@ -284,6 +284,7 @@ class Simulator():
                 total += temp_total # accumulate total
                 compare += temp_compare
                 hl.append(temp_hl)            
+            
             # save anchor accuracy results
             anchor_accuracy.append_row(epoch, (correct/total).tolist())
             
@@ -354,8 +355,8 @@ class Simulator():
             # print statistics
             if epoch % self.print_freq == 0:
                 epoch_time = time.time() - epoch_time
-                print(f"[EPOCH {epoch}] \t loss: {epoch_loss.item():.4f} \t time: {epoch_time:.4f}")
                 time_data.append_row(epoch, epoch_time)
+                print(f"[EPOCH {epoch}] \t loss: {epoch_loss.item():.4f} \t time: {epoch_time:.4f}")
             
             # save checkpoint
             if epoch in self.cp_epochs:
@@ -386,7 +387,6 @@ class Simulator():
 
         
         output_data.save_data(index_label='epoch')
-        print(hidden_layer_data.shape)
         hidden_layer_data.save_data(index_label='epoch')
         time_data.lineplot()
         plaut_accuracy.barplot()
