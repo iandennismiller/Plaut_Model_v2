@@ -20,8 +20,6 @@ import shutil
 import imageio
 
 filepath = "../results/BASE-S1D1O1-may30/warping-dilution-BASE-S1D1O1-may30-Hidden Layer.csv.gz"
-anchors = ['slit']
-probes = ['vlit', 'plit', 'trit', 'drit']
 #anchors = ['blome']
 #probes = ['stome', 'shome', 'grome', 'prome']
 
