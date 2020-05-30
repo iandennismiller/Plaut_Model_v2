@@ -19,15 +19,17 @@ import os
 import shutil
 import imageio
 
-filepath = "../results/BASE-S1D2O1-may24/warping-dilution-BASE-S1D2O1-may24-Output Layer.csv.gz"
+filepath = "../results/BASE-S1D1O1-may30/warping-dilution-BASE-S1D1O1-may30-Hidden Layer.csv.gz"
+anchors = ['slit']
+probes = ['vlit', 'plit', 'trit', 'drit']
+#anchors = ['blome']
+#probes = ['stome', 'shome', 'grome', 'prome']
+
 
 class TSNE_plotter():
     def __init__(self, filepath):
         self.rootdir = '/'.join(filepath.split('/')[:-1])+'/tsne'
-        self.df = pd.read_csv(filepath, converters={'activation': eval}, dtype={'category': 'category'})
-        self.df['label'] = self.df['category'].cat.codes
-        #self.df['hl_activation'] = self.df['hl_activation'].apply(lambda x: np.array(x))
-        
+
         # create folder for tsne
         try:
             os.mkdir(self.rootdir)
@@ -44,35 +46,55 @@ class TSNE_plotter():
                 print("Exiting...")
                 exit()
         
-
-    def create_tsne_plot(self, epoch):
-        df = self.df[self.df['epoch'] == epoch]
+        # Load and process data
+        self.df = pd.read_csv(filepath, converters={'activation': eval})
+        self.df['category'] = self.df['category'].apply(lambda x: self.recategorize(x))
+        
+        self.tsne = TSNE(n_components=2, perplexity=100, random_state=1)
+        #self.df = self.df.astype({'category': 'category'})
+        #self.df['label'] = self.df['category'].astype('category').cat.codes
+        #self.df['hl_activation'] = self.df['hl_activation'].apply(lambda x: np.array(x))
+        
+    def recategorize(self, x):
+        if 'ANC' in x:
+            return 'ANCHOR'
+        elif 'PRO' in x:
+            return 'PROBE'
+        else:
+            return 'BASE'
+        
+    def create_tsne_plot(self, epoch, df):
+        df = df[df['epoch'] == epoch]
+        df = df.reset_index()
         X = df['activation'].to_numpy()
-        y = df['label'].to_numpy()
+        #y = df['label'].to_numpy()
         X = np.vstack(X)
-        X = X[:, 23:37]
-        X_embedded = TSNE(n_components=2, random_state=1.fit_transform(X)
+        X_embedded = self.tsne.fit_transform(X)
 
         # create chart
         plt.figure()
-        for cat in enumerate(df['category'].cat.categories):
-            ind = np.argwhere(y==cat[0])
-            plt.scatter(X_embedded[ind, 0], X_embedded[ind, 1], label=cat[1], s=10)
+        for cat in df['category'].unique():
+            ind = df.index[df['category'] == cat].tolist()
+            plt.scatter(X_embedded[ind, 0], X_embedded[ind, 1], label=cat, s=5)
         plt.legend()
         plt.savefig(f"{self.rootdir}/tsne_epoch{epoch}.png", dpi=200)
         plt.close()
 
-    def create_tsne_gif(self, low, high, interval):
-        for epoch in range(low, high+interval, interval):
-            self.create_tsne_plot(epoch)
-            print(epoch)
-        
+    def create_tsne_gif(self, anchors, probes):
+        epochs = [350, 700]#self.df['epoch'].unique()
+        # filter out extra anchors and probes
+        df = self.df[(self.df['category'] == 'BASE') | ((self.df['category'] == 'ANCHOR') & (self.df['orth'].isin(anchors))) | ((self.df['category'] == 'PROBE') & (self.df['orth'].isin(probes)))]
+
+        for epoch in epochs:
+            self.create_tsne_plot(epoch, df)
+        '''
         filepaths = os.listdir(self.rootdir)
         images = []
         for path in filepaths:
             images.append(imageio.imread(f"{self.rootdir}/{path}"))
             imageio.mimsave(f'{self.rootdir}/tsne.gif', images)
+        '''
 
 
 t = TSNE_plotter(filepath)
-t.create_tsne_gif(360, 700, 10)
+t.create_tsne_gif(anchors, probes)
