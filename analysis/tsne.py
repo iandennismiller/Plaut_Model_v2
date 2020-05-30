@@ -7,7 +7,10 @@ Date Created    : May 03, 2020
 Last Updated    : May 03, 2020
 
 === UPDATE NOTES ===
- > May 24, 2010
+ > May 30, 2020
+    - added filter for probes and anchors
+    - modified for loop for scatter plot and remove converting 'category' column as category dtype
+ > May 24, 2020
     - file created
 """
 
