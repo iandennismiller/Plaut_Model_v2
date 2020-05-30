@@ -389,7 +389,7 @@ class Simulator():
         targets = data['phonemes']
 
         # forward pass + calculate loss
-        outputs = self.model(inputs)
+        hidden, outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
         
         # find weighted sum of loss
