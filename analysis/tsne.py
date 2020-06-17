@@ -4,7 +4,7 @@ tsne.py
 === SUMMARY ===
 Description     : Create a t-SNE plot
 Date Created    : May 03, 2020
-Last Updated    : May 03, 2020
+Last Updated    : June 16, 2020
 
 === UPDATE NOTES ===
  > June 13, 2020
@@ -26,6 +26,7 @@ from matplotlib import pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
 from scipy.spatial.distance import cosine
+
 pd.options.mode.chained_assignment = None
 
 import os
@@ -34,14 +35,14 @@ import shutil
 filepath = "../results/BASE-S1D1O1-jun13"
 pd.set_option('display.max_rows', 10000)
 
-class TSNE_plotter():
 
+class TSNE_plotter():
     __CODA_SIMILARITY_MAX = 0.01
 
     def __init__(self, filepath):
-        self.rootdir = '/'.join(filepath.split('/'))+'/tsne'
+        self.rootdir = '/'.join(filepath.split('/')) + '/tsne'
         self.label = filepath.split('/')[-1]
-        
+
         # create folder for tsne
         try:
             os.mkdir(self.rootdir)
@@ -56,18 +57,20 @@ class TSNE_plotter():
                 os.mkdir(self.rootdir)
             else:
                 pass
-        
+
         # Load and process hidden layer and output layer data
-        self.hl_df = pd.read_csv(f'{filepath}/warping-dilution-{self.label}-Hidden Layer.csv.gz', converters={'activation': eval})
+        self.hl_df = pd.read_csv(f'{filepath}/warping-dilution-{self.label}-Hidden Layer.csv.gz',
+                                 converters={'activation': eval})
         self.hl_df['category'] = self.hl_df['category'].apply(lambda x: self.recategorize(x))
-        self.ol_df = pd.read_csv(f'{filepath}/warping-dilution-{self.label}-Output Layer.csv.gz', converters={'activation': eval})
+        self.ol_df = pd.read_csv(f'{filepath}/warping-dilution-{self.label}-Output Layer.csv.gz',
+                                 converters={'activation': eval})
         self.ol_df['category'] = self.ol_df['category'].apply(lambda x: self.recategorize(x))
 
         self.tsne = TSNE(n_components=2, perplexity=10, random_state=1)
-        #self.hl_df = self.hl_df.astype({'category': 'category'})
-        #self.hl_df['label'] = self.hl_df['category'].astype('category').cat.codes
-        #self.hl_df['hl_activation'] = self.hl_df['hl_activation'].apply(lambda x: np.array(x))
-        
+        # self.hl_df = self.hl_df.astype({'category': 'category'})
+        # self.hl_df['label'] = self.hl_df['category'].astype('category').cat.codes
+        # self.hl_df['hl_activation'] = self.hl_df['hl_activation'].apply(lambda x: np.array(x))
+
     def recategorize(self, x):
         if 'ANC' in x:
             return 'ANCHOR'
@@ -75,7 +78,7 @@ class TSNE_plotter():
             return 'PROBE'
         else:
             return 'BASE'
-    
+
     def find_neighbours(self, target, epoch, n):
         """
         Find the neighbours that share a common vowel phoneme at the anchor epoch
@@ -90,9 +93,10 @@ class TSNE_plotter():
         base['max_vowel'] = base['activation'].apply(lambda x: np.argmax(np.array(x)[23:37]))
         target['max_vowel'] = target['activation'].apply(lambda x: np.argmax(np.array(x)[23:37]))
         base = base[base['max_vowel'].isin(target['max_vowel'].tolist())]
-        base['coda_similarity'] = base['activation'].apply(lambda x: cosine(x[37:], target['activation'].tolist()[0][37:]))
+        base['coda_similarity'] = base['activation'].apply(
+            lambda x: cosine(x[37:], target['activation'].tolist()[0][37:]))
         base = base[base['coda_similarity'] < TSNE_plotter.__CODA_SIMILARITY_MAX]
-        
+
         print(target['orth'], base['orth'].tolist())
         return base['orth'].tolist()
 
@@ -109,19 +113,19 @@ class TSNE_plotter():
         """
         base = self.hl_df[(self.hl_df['category'] == 'BASE') & (self.hl_df['epoch'] == epoch)].reset_index(drop=True)
         base_activations = np.array(base['activation'].tolist())
-        neigh = NearestNeighbors(n_neighbors=n) # +1 b/c it returns the target itself as closest neighbor
+        neigh = NearestNeighbors(n_neighbors=n)  # +1 b/c it returns the target itself as closest neighbor
         neigh.fit(base_activations)
-        
+
         target = self.hl_df[(self.hl_df['orth'].isin(target)) & (self.hl_df['epoch'] == epoch)]
-        
+
         target_activation = np.array(target['activation'].tolist())
-        
+
         ind = neigh.kneighbors(target_activation, n_neighbors=n, return_distance=False).flatten()
 
         neighbours = self.hl_df.iloc[ind]['orth'].tolist()
-        
+
         return neighbours
-    
+
     def find_distances(self, df, anchor, probes, epoch):
         """
         Find the average distance:
@@ -138,13 +142,13 @@ class TSNE_plotter():
         Returns:
             [type]: [description]
         """
-        df = df[df['epoch'] == epoch] # filter for particular epoch
+        df = df[df['epoch'] == epoch]  # filter for particular epoch
 
         # find activation of anchor
         anchor_activation = np.array(df[df['orth'].isin(anchor)]['activation'].tolist()).flatten()
-        
+
         df['dist'] = df['activation'].apply(lambda x: np.linalg.norm(anchor_activation - np.array(x)))
-        
+
         # distance w/ anchors
         anchor_base_dist = df[df['category'] == 'BASE']['dist'].mean()
         anchor_probe_dist = df[df['category'] == 'PROBE']['dist'].mean()
@@ -178,7 +182,7 @@ class TSNE_plotter():
             return 'BASE_2'
         else:
             return row['category']
-       
+
     def create_tsne_plot(self, epoch, df, anchor, neighbours1, neighbours2):
         """
         Generates a tsne plot at a particular epoch
@@ -190,7 +194,7 @@ class TSNE_plotter():
         df = df[df['epoch'] == epoch]
         df = df.reset_index()
         df['category'] = df.apply(lambda row: self.label_category(row, neighbours1, neighbours2), axis=1)
-        
+
         X = df['activation'].to_numpy()
         X = np.vstack(X)
         X_embedded = self.tsne.fit_transform(X)
@@ -215,15 +219,15 @@ class TSNE_plotter():
         neighbours = neighbours1 + neighbours2
 
         # filter for the neighbours, anchors, and probes
-        df = self.hl_df[self.hl_df['orth'].isin(neighbours+anchors+probes)]
+        df = self.hl_df[self.hl_df['orth'].isin(neighbours + anchors + probes)]
 
         # file to save data
-        f = open(self.rootdir+"/tsne.txt", 'a')
+        f = open(self.rootdir + "/tsne.txt", 'a')
         f.write(f'-----------------------------------------\n')
         f.write(f"Anchor: {anchors}\n")
         f.write(f"Probes: {probes}\n")
         f.write("\n")
-        
+
         # create plot and calculate distances
         for epoch in epochs:
             self.create_tsne_plot(epoch, df, anchors[0], neighbours1, neighbours2)
@@ -243,39 +247,40 @@ class TSNE_plotter():
         #     images.append(imageio.imread(f"{self.rootdir}/{path}"))
         #     imageio.mimsave(f'{self.rootdir}/tsne.gif', images)
 
+
 t = TSNE_plotter(filepath)
 
 # REGULARS
 anchors = ['shing']
-probes=['ging', 'jing', 'ning', 'ting']
+probes = ['ging', 'jing', 'ning', 'ting']
 t.create_tsne_series(anchors=anchors, probes=probes)
 
 anchors = ['slape']
-probes=['blape', 'clape', 'brape', 'prape']
+probes = ['blape', 'clape', 'brape', 'prape']
 t.create_tsne_series(anchors=anchors, probes=probes)
 
 # EXCEPTION
 anchors = ['nust']
-probes=['chust', 'pust', 'tust', 'drust']
+probes = ['chust', 'pust', 'tust', 'drust']
 t.create_tsne_series(anchors=anchors, probes=probes)
 
 anchors = ['suff']
-probes=['zuff', 'skuff', 'gluff', 'juff']
+probes = ['zuff', 'skuff', 'gluff', 'juff']
 t.create_tsne_series(anchors=anchors, probes=probes)
 
 anchors = ['geam']
-probes=['veam', 'frem', 'keam', 'peam']
+probes = ['veam', 'frem', 'keam', 'peam']
 t.create_tsne_series(anchors=anchors, probes=probes)
 
 anchors = ['fank']
-probes=['pank', 'slank', 'glank', 'brank']
+probes = ['pank', 'slank', 'glank', 'brank']
 t.create_tsne_series(anchors=anchors, probes=probes)
 
 # AMBIGUOUS
 anchors = ['grour']
-probes=['brour', 'drour', 'prour', 'clour']
+probes = ['brour', 'drour', 'prour', 'clour']
 t.create_tsne_series(anchors=anchors, probes=probes)
 
 anchors = ['plone']
-probes=['blone', 'frone', 'slone', 'smone']
+probes = ['blone', 'frone', 'slone', 'smone']
 t.create_tsne_series(anchors=anchors, probes=probes)
