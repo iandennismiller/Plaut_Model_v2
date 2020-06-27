@@ -2,17 +2,20 @@
 stress.py
 
 === SUMMARY ===
-Description     : Script stress calculations on data
+Description     : Script for stress calculations on data
 Date Created    : June 16, 2020
-Last Updated    : June 16, 2020
+Last Updated    : June 27, 2020
 
 === UPDATE NOTES ===
- > June 13, 2020
+ > June 27, 2020
+    - normalize stress by number of units
+ > June 16, 2020
     - file created
 """
 
 import pandas as pd
 import numpy as np
+pd.set_option('mode.chained_assignment', None)
 
 filepath = "../results/BASE-S1D1O1-jun13"
 label = filepath.split('/')[-1]
@@ -21,7 +24,7 @@ categories = ['ANC_REG', 'ANC_EXC', 'ANC_AMB', 'PRO_REG', 'PRO_EXC', 'PRO_AMB']
 
 def calculate_stress(x):
    x = np.array(x)
-   return np.sum(x*np.log2(x) + (1-x)*np.log2(1-x) - np.log2(0.5))
+   return np.sum(x*np.log2(x) + (1-x)*np.log2(1-x) - np.log2(0.5)) / len(x)
 
 if __name__ == "__main__":
    # load data
