@@ -22,6 +22,8 @@ Last Updated    : May 03, 2020
     - anchors are now placed in one single csv file, and sets are chosen in config.cfg rather than making different csv files
 
 === UPDATE NOTES ===
+ > July 12, 2020
+    - add target radius in predict function
  > June 13, 2020
     - update to save output layer data as well
  > May 24, 2020
@@ -64,7 +66,6 @@ from src.helpers import *
 from src.results_tool import Results
 
 
-
 class Simulator():
     def __init__(self, config_filepath):
         """
@@ -104,14 +105,20 @@ class Simulator():
         self.label = config['general']['label']
         
         # Training Settings
-        for param in config['training']:
-            exec(f"self.{param} = {int(config['training'][param])}")
+        self.plot_freq = int(config['training']['plot_freq'])
+        self.print_freq = int(config['training']['print_freq'])
+        self.save_freq = int(config['training']['save_freq'])
+        self.random_seed = int(config['training']['random_seed'])
+        self.target_radius = float(config['training']['target_radius'])
+        self.total_epochs = int(config['training']['total_epochs'])
+        self.anchor_epoch = int(config['training']['anchor_epoch'])
 
         assert self.plot_freq > 0 and self.print_freq > 0 and self.save_freq > 0, "ERROR: Plot, Print, Save frequencies must be greater than 0"
         assert self.label != '', "ERROR: Label must not be left blank"
         assert self.total_epochs > 0, "ERROR: Total Epochs must be greater than 0"
         assert self.anchor_epoch > 0, "ERROR: Anchor Epoch must be greater than 0"
         assert self.total_epochs >= self.anchor_epoch, "ERROR: Total Epochs must be greater than or equal to Anchor Epoch"
+        assert self.target_radius >= 0 and self.target_radius <= 1, "ERROR: Target Radius must be between 0 and 1"
         
         # Checkpoint Settings
         self.cp_epochs = [int(x) for x in config['checkpoint']['checkpoint_save_epochs'].split(',') if x != '']
@@ -411,7 +418,7 @@ class Simulator():
                     temp += [self.optim_config[key][i] for j in range(epoch_start, epoch_end)] # once per every epoch
             output_data.add_columns({key: temp})
 
-        
+        # save data as .csv.gz files and produce final plots
         output_data.save_data(index_label='epoch')
         hidden_layer_data.save_data(index_label='epoch')
         output_layer_data.save_data(index_label='epoch')
@@ -456,10 +463,20 @@ class Simulator():
         # extract log frequencies, grapheme vectors, phoneme vectors
         log_freq = data['log_freq'].view(-1, 1)
         inputs = data['graphemes']
-        targets = data['phonemes']
+        targets = data['phonemes'].clone()
 
-        # forward pass + calculate loss
+        # forward pass
         hl, outputs = self.model(inputs)
+
+        # target radius
+        if self.target_radius > 0:
+            target_one_indices = torch.where(targets == 1)
+            target_zero_indices = torch.where(targets == 0)
+            target_upper_thresh = torch.full(targets.shape, 1-self.target_radius)
+            target_lower_thresh = torch.full(targets.shape, self.target_radius)
+            targets[target_one_indices] = torch.max(target_upper_thresh, outputs.detach())[target_one_indices]
+            targets[target_zero_indices] = torch.min(target_lower_thresh, outputs.detach())[target_zero_indices]
+
         loss = self.criterion(outputs, targets)
         
         # find weighted sum of loss

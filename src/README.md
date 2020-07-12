@@ -29,6 +29,9 @@ Note: For `list` type parameters, square brakets `[]` are not required.
 * Type: `int`
 * Description: seed for random number generator, used to allow reproducible results
 * Required
+> **`target_radius`**
+* Type: `float`
+* Description: set a boundary for the target such that if abs(output - target) < target_radius, error = 0
 > **`total_epochs`**
 * Type: `int`
 * Description: total number of training epochs
