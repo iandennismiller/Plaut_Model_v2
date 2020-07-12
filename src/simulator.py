@@ -311,7 +311,7 @@ class Simulator():
                 'anchors_added': [1 if epoch > self.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch >= self.anchor_epoch and epoch % self.plot_freq == 0:
+            if epoch >= self.anchor_epoch and epoch % (self.plot_freq/10) == 0:
                 hl = np.vstack(hl) # concatenate data
                 hidden_layer_data.add_rows([epoch] * hl.shape[0], {
                     'orth': data['orth'],
@@ -348,7 +348,7 @@ class Simulator():
                 'anchors_added': [1 if epoch > self.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch >= self.anchor_epoch and epoch % self.plot_freq == 0:
+            if epoch >= self.anchor_epoch and epoch % (self.plot_freq/10) == 0:
                 hl = np.vstack(hl)
                 hidden_layer_data.add_rows([epoch] * hl.shape[0], {
                     'orth': data['orth'],
