@@ -1,0 +1,4 @@
+# ignore produced plots/data
+density_plots
+*.txt
+*.zip
