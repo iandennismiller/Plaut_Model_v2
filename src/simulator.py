@@ -4,7 +4,7 @@ simulator.py
 === SUMMARY ===
 Description     : Code for running simulation for training model and saving results
 Date Created    : May 03, 2020
-Last Updated    : May 03, 2020
+Last Updated    : July 12, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -56,14 +56,14 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 import time
-import datetime
 import numpy as np
-import configparser
 
 from src.dataset import Plaut_Dataset
 from src.model import Plaut_Net
 from src.helpers import *
 from src.results_tool import Results
+
+from config.config import Config
 
 
 class Simulator():
@@ -77,124 +77,55 @@ class Simulator():
 
         print("Initializing Simulator...")
 
-        self.configure_simulation(config_filepath) # load configuration
+        # load config and set random seed
+        self.config = Config(config_filepath)
+        torch.manual_seed(self.config.General.random_seed)
         print("--Configuration Loaded")
-        self.load_data() # load data
+
+        # load data
+        self.load_data()
         print("--Datasets Loaded")
-        self.rootdir, self.label = create_simulation_folder(self.label) # create simulation folder
-        print(f"--Simulation Results will be stored in: {self.rootdir}")
-        self.model = Plaut_Net() # initialize model
+
+        # create simulation folder
+        rootdir, label = create_simulation_folder(self.config.General.label)
+        self.config.General.label = label
+        self.config.General.rootdir = rootdir
+        print(f"--Simulation Results will be stored in: {self.config.General.rootdir}")
+
+        # initialize model
+        self.model = Plaut_Net()
         print("--Model Initialized")
-    
-    def configure_simulation(self, filepath):
-        """
-        Loads configuration file, and sets parameters
-
-        Detailed Description:
-         - loads all configuration settings
-         - sets random seed
-         - sets simulation label
-
-        Arguments:
-            filepath {str} -- filepath of the configuration file
-        """
-        config = configparser.ConfigParser()
-        config.read(filepath)
-        
-        # General Settings
-        self.label = config['general']['label']
-        
-        # Training Settings
-        self.plot_freq = int(config['training']['plot_freq'])
-        self.print_freq = int(config['training']['print_freq'])
-        self.save_freq = int(config['training']['save_freq'])
-        self.random_seed = int(config['training']['random_seed'])
-        self.target_radius = float(config['training']['target_radius'])
-        self.total_epochs = int(config['training']['total_epochs'])
-        self.anchor_epoch = int(config['training']['anchor_epoch'])
-
-        assert self.plot_freq > 0 and self.print_freq > 0 and self.save_freq > 0, "ERROR: Plot, Print, Save frequencies must be greater than 0"
-        assert self.label != '', "ERROR: Label must not be left blank"
-        assert self.total_epochs > 0, "ERROR: Total Epochs must be greater than 0"
-        assert self.anchor_epoch > 0, "ERROR: Anchor Epoch must be greater than 0"
-        assert self.total_epochs >= self.anchor_epoch, "ERROR: Total Epochs must be greater than or equal to Anchor Epoch"
-        assert self.target_radius >= 0 and self.target_radius <= 1, "ERROR: Target Radius must be between 0 and 1"
-        
-        # Checkpoint Settings
-        self.cp_epochs = [int(x) for x in config['checkpoint']['checkpoint_save_epochs'].split(',') if x != '']
-        self.checkpoint_file = config['checkpoint']['checkpoint_file']
-
-        # Dataset Settings
-        self.plaut_filepath = config['dataset']['plaut']
-        self.anchor_filepath = config['dataset']['anchor']
-        self.probe_filepath = config['dataset']['probe']
-        self.anchor_sets = [int(x) for x in config['dataset']['anchor_sets'].split(',')]
-        self.anchor_base_freq = float(config['dataset']['anc_freq'])
-        self.plaut_types = [x.strip() for x in config['dataset']['track_plaut_types'].split(',')]
-        self.anchor_types = [x.strip() for x in config['dataset']['track_anchor_types'].split(',')]
-        self.probe_types = [x.strip() for x in config['dataset']['track_probe_types'].split(',')]
-
-        # Optimizer Settings
-        self.optim_config = {
-            'start_epoch': [],
-            'optimizer': [],
-            'learning_rate': [],
-            'momentum': [],
-            'weight_decay': []
-        }
-        i = 1
-        while True:
-            try:
-                self.optim_config['start_epoch'].append(int(config['optim'+str(i)]['start_epoch']))
-                self.optim_config['optimizer'].append(config['optim'+str(i)]['optimizer'])
-                for category in ['learning_rate', 'momentum', 'weight_decay']:
-                    self.optim_config[category].append(float(config['optim'+str(i)][category]))
-                i += 1
-            except:
-                break
-        
-        assert set(self.optim_config['optimizer']).issubset({'Adam', 'SGD'}), "ERROR: Only Adam or SGD can be used."
-        assert 1 in self.optim_config['start_epoch'], "ERROR: Must specify starting optimizer"
-        
-        # set random seed
-        torch.manual_seed(self.random_seed)
-
-        # find date
-        now = datetime.datetime.now()
-        self.date = now.strftime("%b").lower()+now.strftime("%d")
-        
-        self.dilution = len(self.anchor_sets)
-        self.order = 1 if 1 in self.anchor_sets else max(self.anchor_sets)
-
-        # set simulation label
-        self.label += f"-S{self.random_seed}D{self.dilution}O{self.order}-{self.date}"
 
     def load_data(self):
         """
         Creates the DataLoader objects for training
         """
         # create the custom datasets
-        self.plaut_ds = Plaut_Dataset(self.plaut_filepath)
-        self.anchor_ds = Plaut_Dataset(self.anchor_filepath)
-        self.probe_ds = Plaut_Dataset(self.probe_filepath)
-        
+        self.plaut_ds = Plaut_Dataset(self.config.Dataset.plaut_filepath)
+        self.anchor_ds = Plaut_Dataset(self.config.Dataset.anchor_filepath)
+        self.probe_ds = Plaut_Dataset(self.config.Dataset.probe_filepath)
+
         # get the types to track from the dataset if not given
-        if self.plaut_types == ['']:
-            self.plaut_types = list(self.plaut_ds.get_types())
+        if self.config.Dataset.plaut_types == ['']:
+            self.config.Dataset.plaut_types = list(self.plaut_ds.get_types())
         else:
-            assert set(self.plaut_types).issubset(self.plaut_ds.get_types()), "ERROR: Word types must exist in dataset."
-        if self.anchor_types == ['']:
-            self.anchor_types = list(self.anchor_ds.get_types())
+            assert set(self.config.Dataset.plaut_types).issubset(
+                self.plaut_ds.get_types()), "ERROR: Word types must exist in dataset."
+        if self.config.Dataset.anchor_types == ['']:
+            self.config.Dataset.anchor_types = list(self.anchor_ds.get_types())
         else:
-            assert set(self.anchor_types).issubset(self.anchor_ds.get_types()), "ERROR: Word types must exist in dataset."
-        if self.probe_types == ['']:
-            self.probe_types = list(self.probe_ds.get_types())
+            assert set(self.config.Dataset.anchor_types).issubset(
+                self.anchor_ds.get_types()), "ERROR: Word types must exist in dataset."
+        if self.config.Dataset.probe_types == ['']:
+            self.config.Dataset.probe_types = list(self.probe_ds.get_types())
         else:
-            assert set(self.probe_types).issubset(self.probe_ds.get_types()), "ERROR: Word types must exist in dataset."
+            assert set(self.config.Dataset.probe_types).issubset(
+                self.probe_ds.get_types()), "ERROR: Word types must exist in dataset."
 
         # choose the specified anchor sets and set frequency appropriately
-        self.anchor_ds.restrict_set(self.anchor_sets)
-        self.anchor_ds.set_frequency(self.anchor_base_freq/len(self.anchor_sets))
+        self.anchor_ds.restrict_set(self.config.Dataset.anchor_sets)
+        self.anchor_ds.set_frequency(
+            self.config.Dataset.anchor_base_freq / len(self.config.Dataset.anchor_sets))
 
         self.plaut_samples = len(self.plaut_ds)
         self.anchor_samples = len(self.anchor_ds)
@@ -205,7 +136,7 @@ class Simulator():
         self.anchor_loader = DataLoader(self.anchor_ds, batch_size=len(self.anchor_ds), num_workers=0)
         self.probe_loader = DataLoader(self.probe_ds, batch_size=len(self.probe_ds), num_workers=0)
 
-    def train(self):     
+    def train(self):
         """
         Training Function for simulator
         """
@@ -215,68 +146,77 @@ class Simulator():
         self.criterion = nn.BCELoss(reduction='none')
 
         # initialize results storage classes
-        training_loss = Results(results_dir=self.rootdir+"/Training Loss", sim_label=self.label, title="Training Loss",
-                                xlabel="Epoch", ylabel="Loss", anchor=self.anchor_epoch)
-        plaut_accuracy = Results(results_dir=self.rootdir+"/Training Accuracy", sim_label=self.label, title="Training Accuracy",
-                                 xlabel="Epoch", ylabel="Accuracy", categories=self.plaut_types, anchor=self.anchor_epoch)
-        anchor_accuracy = Results(results_dir=self.rootdir+"/Anchor Accuracy", sim_label=self.label, title="Anchor Accuracy",
-                                  xlabel="Epoch", ylabel="Accuracy", categories=self.anchor_types, anchor=self.anchor_epoch)
-        probe_accuracy = Results(results_dir=self.rootdir+"/Probe Accuracy", sim_label=self.label, title="Probe Accuracy",
-                                 xlabel="Epoch", ylabel="Accuracy", categories=self.probe_types, anchor=self.anchor_epoch)
-        output_data = Results(results_dir=self.rootdir, sim_label=self.label, title="Simulation Results", xlabel='epoch',
+        training_loss = Results(results_dir=self.config.General.rootdir + "/Training Loss",
+                                config=self.config, title="Training Loss", labels=("Epoch", "Loss"))
+        plaut_accuracy = Results(results_dir=self.config.General.rootdir + "/Training Accuracy", config=self.config,
+                                 title="Training Accuracy", labels=("Epoch", "Accuracy"),
+                                 categories=self.config.Dataset.plaut_types)
+        anchor_accuracy = Results(results_dir=self.config.General.rootdir + "/Anchor Accuracy", config=self.config,
+                                  title="Anchor Accuracy", labels=("Epoch", "Accuracy"),
+                                  categories=self.config.Dataset.anchor_types)
+        probe_accuracy = Results(results_dir=self.config.General.rootdir + "/Probe Accuracy", config=self.config,
+                                 title="Probe Accuracy", labels=("Epoch", "Accuracy"),
+                                 categories=self.config.Dataset.probe_types)
+        output_data = Results(results_dir=self.config.General.rootdir, config=self.config,
+                              title="Simulation Results", labels=('Epoch', ""),
                               categories=['example_id', 'orth', 'phon', 'category', 'correct', 'anchors_added'])
-        time_data = Results(results_dir=self.rootdir, sim_label=self.label, title="Running Time", xlabel="Epoch",
-                            ylabel="Time (s)", anchor=self.anchor_epoch)
-        hidden_layer_data = Results(results_dir=self.rootdir, sim_label=self.label, title="Hidden Layer",
-                                    categories=['orth', 'category', 'activation'])
-        output_layer_data = Results(results_dir=self.rootdir, sim_label=self.label, title="Output Layer",
-                                    categories=['orth', 'category', 'activation'])
+        time_data = Results(results_dir=self.config.General.rootdir, config=self.config,
+                            title="Running Time", labels=("Epoch", "Time (s)"))
+        hidden_layer_data = Results(results_dir=self.config.General.rootdir, config=self.config,
+                                    title="Hidden Layer", categories=['orth', 'category', 'activation'])
+        output_layer_data = Results(results_dir=self.config.General.rootdir, config=self.config,
+                                    title="Output Layer", categories=['orth', 'category', 'activation'])
 
         start_epoch = 1
 
         """
         LOAD CHECKPOINT
         """
-        if self.checkpoint_file != "":
+        if self.config.Checkpoint.checkpoint_file != "":
             start_epoch, optimizer = self.load_checkpoint()
-        
+
         """ TRAINING LOOP """
-        for epoch in range(start_epoch, self.total_epochs+1):
+        for epoch in range(start_epoch, self.config.Training.total_epochs + 1):
             epoch_time = time.time()
             epoch_loss = 0
 
             # change optimizer if needed
-            if epoch in self.optim_config['start_epoch']:
-                current_optim = self.optim_config['start_epoch'].index(epoch)
+            if epoch in self.config.Optimizer.optim_config['start_epoch']:
+                current_optim = self.config.Optimizer.optim_config['start_epoch'].index(epoch)
                 optimizer = self.set_optimizer(current_optim)
 
             """ PLAUT DATASET """
-            correct, total, compare, hl, ol = np.zeros(len(self.plaut_types)), np.zeros(len(self.plaut_types)), [], [], []
+            correct = np.zeros(len(self.config.Dataset.plaut_types))
+            total = np.zeros(len(self.config.Dataset.plaut_types))
+            compare, hl, ol = [], [], []
+
+            data = None
             for i, data in enumerate(self.plaut_loader):
-                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(data, categories=self.plaut_types) # find loss and accuracy
+                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(
+                    data, categories=self.config.Dataset.plaut_types)  # find loss and accuracy
 
-                epoch_loss += loss # accumulate loss
+                epoch_loss += loss  # accumulate loss
 
-                correct += temp_correct # accumulate correct
-                total += temp_total # accumulate total
+                correct += temp_correct  # accumulate correct
+                total += temp_total  # accumulate total
                 compare += temp_compare
                 hl.append(temp_hl)
                 ol.append(temp_ol)
-            
+
             # save plaut accuracy results
-            plaut_accuracy.append_row(epoch, (correct/total).tolist())
-            
+            plaut_accuracy.append_row(epoch, (correct / total).tolist())
+
             output_data.add_rows([epoch] * len(compare), {
-                'example_id': list(range(1, 1+self.plaut_samples)),
+                'example_id': list(range(1, 1 + self.plaut_samples)),
                 'orth': data['orth'],
-                'phon': data['phon'], 
+                'phon': data['phon'],
                 'category': data['type'],
                 'correct': compare,
-                'anchors_added': [1 if epoch > self.anchor_epoch else 0] * len(compare)})
-            
+                'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
+
             # save hidden and output layer data
-            if epoch >= self.anchor_epoch and epoch % self.plot_freq == 0:
-                hl = np.vstack(hl) # concatenate data
+            if epoch >= self.config.Training.anchor_epoch and epoch % self.config.Training.plot_freq == 0:
+                hl = np.vstack(hl)  # concatenate data
                 hidden_layer_data.add_rows([epoch] * hl.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
@@ -288,38 +228,42 @@ class Simulator():
                     'category': data['type'],
                     'activation': ol.tolist()
                 })
-                
+
             """ ANCHOR DATASET """
-            correct, total, compare, hl, ol = np.zeros(len(self.anchor_types)), np.zeros(len(self.anchor_types)), [], [], []
-            
+            correct = np.zeros(len(self.config.Dataset.anchor_types))
+            total = np.zeros(len(self.config.Dataset.anchor_types))
+            compare, hl, ol = [], [], []
+
+            data = None
             for i, data in enumerate(self.anchor_loader):
-                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(data, categories=self.anchor_types) # find loss and accuracy
+                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(
+                    data, categories=self.config.Dataset.anchor_types)  # find loss and accuracy
 
                 # accumulate loss when anchors are added into training set
-                if epoch > self.anchor_epoch:
+                if epoch > self.config.Training.anchor_epoch:
                     epoch_loss += loss
-                
-                correct += temp_correct # accumulate correct
-                total += temp_total # accumulate total
+
+                correct += temp_correct  # accumulate correct
+                total += temp_total  # accumulate total
                 compare += temp_compare
-                hl.append(temp_hl)   
-                ol.append(temp_ol)         
-            
+                hl.append(temp_hl)
+                ol.append(temp_ol)
+
             # save anchor accuracy results
-            anchor_accuracy.append_row(epoch, (correct/total).tolist())
-            
+            anchor_accuracy.append_row(epoch, (correct / total).tolist())
+
             # save output data
             output_data.add_rows([epoch] * len(compare), {
-                'example_id': list(range(1+self.plaut_samples, 1+self.plaut_samples+self.anchor_samples)),
+                'example_id': list(range(1 + self.plaut_samples, 1 + self.plaut_samples + self.anchor_samples)),
                 'orth': data['orth'],
-                'phon': data['phon'], 
+                'phon': data['phon'],
                 'category': data['type'],
                 'correct': compare,
-                'anchors_added': [1 if epoch > self.anchor_epoch else 0] * len(compare)})
+                'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch >= self.anchor_epoch and epoch % (self.plot_freq/10) == 0:
-                hl = np.vstack(hl) # concatenate data
+            if epoch >= self.config.Training.anchor_epoch and epoch % (self.config.Training.plot_freq / 10) == 0:
+                hl = np.vstack(hl)  # concatenate data
                 hidden_layer_data.add_rows([epoch] * hl.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
@@ -331,31 +275,37 @@ class Simulator():
                     'category': data['type'],
                     'activation': ol.tolist()
                 })
-            
-            """ PROBE DATASET """
-            correct, total, compare, hl, ol = np.zeros(len(self.probe_types)), np.zeros(len(self.probe_types)), [], [], []
-            for i, data in enumerate(self.probe_loader):
-                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(data, categories=self.probe_types) # find loss and accuracy
 
-                correct += temp_correct # accumulate correct
-                total += temp_total # accumulate total
+            """ PROBE DATASET """
+            correct = np.zeros(len(self.config.Dataset.probe_types))
+            total = np.zeros(len(self.config.Dataset.probe_types))
+            compare, hl, ol = [], [], []
+
+            data = None
+            for i, data in enumerate(self.probe_loader):
+                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(
+                    data, categories=self.config.Dataset.probe_types)  # find loss and accuracy
+
+                correct += temp_correct  # accumulate correct
+                total += temp_total  # accumulate total
                 compare += temp_compare
                 hl.append(temp_hl)
                 ol.append(temp_ol)
 
             # save probe accuracy results
-            probe_accuracy.append_row(epoch, (correct/total).tolist())
+            probe_accuracy.append_row(epoch, (correct / total).tolist())
 
             output_data.add_rows([epoch] * len(compare), {
-                'example_id': list(range(1+self.plaut_samples+self.anchor_samples, 1+self.plaut_samples+self.anchor_samples+self.probe_samples)),
+                'example_id': list(range(1 + self.plaut_samples + self.anchor_samples,
+                                         1 + self.plaut_samples + self.anchor_samples + self.probe_samples)),
                 'orth': data['orth'],
-                'phon': data['phon'], 
+                'phon': data['phon'],
                 'category': data['type'],
                 'correct': compare,
-                'anchors_added': [1 if epoch > self.anchor_epoch else 0] * len(compare)})
+                'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch >= self.anchor_epoch and epoch % (self.plot_freq/10) == 0:
+            if epoch >= self.config.Training.anchor_epoch and epoch % (self.config.Training.plot_freq / 10) == 0:
                 hl = np.vstack(hl)
                 hidden_layer_data.add_rows([epoch] * hl.shape[0], {
                     'orth': data['orth'],
@@ -368,54 +318,59 @@ class Simulator():
                     'category': data['type'],
                     'activation': ol.tolist()
                 })
-            
+
             """ UPDATE PARAMETERS, PLOT, SAVE """
             # calculate gradients and update weights
             epoch_loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            
+
             # save loss results
             training_loss.append_row(epoch, epoch_loss.item())
-            
+
             # plot results
-            if epoch % self.plot_freq == 0:
+            if epoch % self.config.Training.plot_freq == 0:
                 training_loss.lineplot()
                 plaut_accuracy.lineplot()
                 anchor_accuracy.lineplot()
                 probe_accuracy.lineplot()
 
             # print statistics
-            if epoch % self.print_freq == 0:
+            if epoch % self.config.Training.print_freq == 0:
                 epoch_time = time.time() - epoch_time
                 time_data.append_row(epoch, epoch_time)
-                print(f"[EPOCH {epoch}] \t loss: {epoch_loss.item():.4f} \t time: {epoch_time:.4f}")
-            
+                print(
+                    f"[EPOCH {epoch}] \t loss: {epoch_loss.item():.4f} \t time: {epoch_time:.4f}")
+
             # save checkpoint
-            if epoch in self.cp_epochs:
+            if epoch in self.config.Checkpoint.cp_epochs:
                 self.save_checkpoint(epoch, optimizer)
-        
+
         """ SAVE RESULTS, PLOT, AND FINISH """
         # save output data
         total_samples = self.plaut_samples + self.anchor_samples + self.probe_samples
         output_data.add_columns({
             'error': [0] * len(output_data),
-            'random_seed': [self.random_seed] * len(output_data),
-            'dilution': [self.dilution] * len(output_data),
-            'order': [self.order] * len(output_data)
+            'random_seed': [self.config.General.random_seed] * len(output_data),
+            'dilution': [self.config.General.dilution] * len(output_data),
+            'order': [self.config.General.order] * len(output_data)
         })
-        
+
         for key in ['optimizer', 'learning_rate', 'momentum', 'weight_decay']:
             temp = []
-            for i in range(len(self.optim_config['start_epoch'])):
-                epoch_start = max(start_epoch, int(self.optim_config['start_epoch'][i])) # start of optimizer config
+            for i in range(len(self.config.Optimizer.optim_config['start_epoch'])):
+                epoch_start = max(start_epoch, int(
+                    self.config.Optimizer.optim_config['start_epoch'][i]))  # start of optimizer config
                 # end of optimizer config is next item in start, or if no more items, then end is total epochs
                 try:
-                    epoch_end = min(int(self.optim_config['start_epoch'][i+1]), self.total_epochs + 1)
+                    epoch_end = min(int(
+                        self.config.Optimizer.optim_config['start_epoch'][i + 1]),
+                        self.config.Training.total_epochs + 1)
                 except:
-                    epoch_end = self.total_epochs + 1
-                for k in range(total_samples): # once per every word
-                    temp += [self.optim_config[key][i] for j in range(epoch_start, epoch_end)] # once per every epoch
+                    epoch_end = self.config.Training.total_epochs + 1
+                for k in range(total_samples):  # once per every word
+                    temp += [self.config.Optimizer.optim_config[key][i]
+                             for j in range(epoch_start, epoch_end)]  # once per every epoch
             output_data.add_columns({key: temp})
 
         # save data as .csv.gz files and produce final plots
@@ -426,8 +381,7 @@ class Simulator():
         plaut_accuracy.barplot()
         anchor_accuracy.barplot()
         probe_accuracy.barplot()
-        
-                      
+
     def set_optimizer(self, i):
         """
         Changes the optimizer based on configuration settings
@@ -438,12 +392,15 @@ class Simulator():
         Returns:
             torch.optim.x.x -- the specified optimizer
         """
-        if self.optim_config['optimizer'][i] == 'Adam':
-            return optim.Adam(self.model.parameters(), lr=self.optim_config['learning_rate'][i], weight_decay=self.optim_config['weight_decay'][i]) 
+        if self.config.Optimizer.optim_config['optimizer'][i] == 'Adam':
+            return optim.Adam(self.model.parameters(), lr=self.config.Optimizer.optim_config['learning_rate'][i],
+                              weight_decay=self.config.Optimizer.optim_config['weight_decay'][i])
         else:
-            return optim.SGD(self.model.parameters(), lr=self.optim_config['learning_rate'][i], weight_decay=self.optim_config['weight_decay'][i], momentum=self.optim_config['momentum'][i]) 
+            return optim.SGD(self.model.parameters(), lr=self.config.Optimizer.optim_config['learning_rate'][i],
+                             weight_decay=self.config.Optimizer.optim_config['weight_decay'][i],
+                             momentum=self.config.Optimizer.optim_config['momentum'][i])
 
-    def predict(self, data, categories=['All']):
+    def predict(self, data, categories=None):
         """
         Makes predictions given the current model, as well as calculate loss and accuracy
         (Accuracy given as two seperate lists of correct and total)
@@ -452,14 +409,18 @@ class Simulator():
             data {dict} -- dictionary of data given by the DataLoader
 
         Keyword Arguments:
-            categories {list} -- list of word categories to calculate accuracy over (default: {['All']})
+            categories {list} -- list of word categories to calculate accuracy over (default: None)
 
         Returns:
             float -- loss
             np.array -- number of correct words per category
             np.array -- total number of words per category
             list -- True/False representing correctness of each word
-        """        
+        """
+
+        if categories is None:
+            categories = ['All']
+
         # extract log frequencies, grapheme vectors, phoneme vectors
         log_freq = data['log_freq'].view(-1, 1)
         inputs = data['graphemes']
@@ -469,68 +430,70 @@ class Simulator():
         hl, outputs = self.model(inputs)
 
         # target radius
-        if self.target_radius > 0:
+        if self.config.Training.target_radius > 0:
             target_one_indices = torch.where(targets == 1)
             target_zero_indices = torch.where(targets == 0)
-            target_upper_thresh = torch.full(targets.shape, 1-self.target_radius)
-            target_lower_thresh = torch.full(targets.shape, self.target_radius)
+            target_upper_thresh = torch.full(targets.shape, 1 - self.config.Training.target_radius)
+            target_lower_thresh = torch.full(targets.shape, self.config.Training.target_radius)
             targets[target_one_indices] = torch.max(target_upper_thresh, outputs.detach())[target_one_indices]
             targets[target_zero_indices] = torch.min(target_lower_thresh, outputs.detach())[target_zero_indices]
 
         loss = self.criterion(outputs, targets)
-        
+
         # find weighted sum of loss
         loss = loss * log_freq
-        loss = loss.sum() 
+        loss = loss.sum()
 
         # accuracy calculations - accuracy is based on highest activity vowel phoneme
         outputs_max_vowel = outputs[:, 23:37].argmax(dim=1)
         targets_max_vowel = targets[:, 23:37].argmax(dim=1)
         compare = torch.eq(outputs_max_vowel, targets_max_vowel).tolist()
-        
+
         correct, total = [], []
         # find correct and total for each category
         for cat in categories:
-            if cat == 'All': # find accuracy across all categories
-                correct.append(sum(compare)) / len(data['type'])
+            if cat == 'All':  # find accuracy across all categories
+                correct.append(sum(compare) / len(data['type']))
                 total.append(len(data['type']))
             else:
                 temp_total, temp_correct = 0, 0
                 for t, c in zip(data['type'], compare):
-                    if t == cat: # if same category
+                    if t == cat:  # if same category
                         temp_total += 1
-                        if c == True: # if correct
+                        if c:  # if correct
                             temp_correct += 1
                 total.append(temp_total)
                 correct.append(temp_correct)
-    
+
         return loss, np.array(correct), np.array(total), compare, hl.detach().numpy(), outputs.detach().numpy()
-    
+
     def save_checkpoint(self, epoch, optimizer):
         torch.save({
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'optimizer_name': optimizer.__class__.__name__
-        }, f"checkpoints/{self.label}_{epoch}.tar")
+        }, f"checkpoints/{self.config.General.label}_{epoch}.tar")
 
     def load_checkpoint(self):
-        checkpoint = torch.load(self.checkpoint_file)
+        checkpoint = torch.load(self.config.Checkpoint.checkpoint_file)
         self.model.load_state_dict(checkpoint['model_state_dict'])
-        
-        assert {'model_state_dict', 'optimizer_state_dict', 'epoch', 'optimizer_name'}.issubset(set(checkpoint.keys()))
+
+        assert {'model_state_dict', 'optimizer_state_dict', 'epoch',
+                'optimizer_name'}.issubset(set(checkpoint.keys()))
 
         if checkpoint['optimizer_name'] == 'SGD':
-            optimizer = optim.SGD(self.model.parameters())
+            optimizer = optim.SGD(self.model.parameters(), lr=0.01)
         else:
             optimizer = optim.Adam(self.model.parameters())
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-        return checkpoint['epoch']+1, optimizer
+        return checkpoint['epoch'] + 1, optimizer
+
 
 """
 TESTING AREA
 """
 if __name__ == '__main__':
-    sim = Simulator("src/config.cfg")
+    sim = Simulator("config/config.cfg")
     sim.train()

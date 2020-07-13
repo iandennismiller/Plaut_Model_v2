@@ -4,7 +4,7 @@ results_tool.py
 === SUMMARY ===
 Description     : Class to store results and plot
 Date Created    : May 04, 2020
-Last Updated    : May 04, 2020
+Last Updated    : July 12, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -13,6 +13,8 @@ Last Updated    : May 04, 2020
     - simulation label is added to plots
 
 === UPDATE NOTES ===
+ > July 12, 2020
+    - minor update to parameters due to changed configuration loading
  > May 24, 2020
     - annotate csv file with title
     - add .shape attribute
@@ -40,7 +42,7 @@ import pandas as pd
 
 
 class Results():
-    def __init__(self, results_dir, sim_label="", title="", xlabel="", ylabel="", categories=[""], anchor=None):
+    def __init__(self, results_dir, config, sim_label="", title="", labels=("", ""), categories=[""]):
         """
         Initializes a class for storing, plotting, and saving data
 
@@ -57,11 +59,10 @@ class Results():
         """
         
         self.title = title
-        self.xlabel = xlabel
-        self.ylabel = ylabel
-        self.sim_label = sim_label
+        self.xlabel, self.ylabel = labels
+        self.sim_label = config.General.label
         self.results_dir = results_dir
-        self.anchor = anchor
+        self.anchor = config.Training.anchor_epoch
         self.index = []
         self.values = {}
         for key in categories:
