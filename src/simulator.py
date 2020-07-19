@@ -4,7 +4,7 @@ simulator.py
 === SUMMARY ===
 Description     : Code for running simulation for training model and saving results
 Date Created    : May 03, 2020
-Last Updated    : July 18, 2020
+Last Updated    : July 19, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -22,6 +22,9 @@ Last Updated    : July 18, 2020
     - anchors are now placed in one single csv file, and anchor sets are chosen in config.cfg
 
 === UPDATE NOTES ===
+ > July 19, 2020
+    - remove DataLoaders, simply use the existing Dataset class
+    - minor logging change
  > July 18, 2020
     - minor reformatting changes
     - add preliminary logging system
@@ -88,10 +91,9 @@ class Simulator:
         torch.manual_seed(self.config.General.random_seed)
         self.logger.debug("Configuration successfully loaded")
 
-        # load data
-        data_loaders, samples = self.load_data()
-        self.plaut_loader, self.anchor_loader, self.probe_loader = data_loaders
-        self.plaut_size, self.anchor_size, self.probe_size = samples
+        # load datasets
+        self.plaut_ds, self.anchor_ds, self.probe_ds = self.load_data()
+        self.plaut_size, self.anchor_size, self.probe_size = len(self.plaut_ds), len(self.anchor_ds), len(self.probe_ds)
         self.logger.debug("Datasets successfully loaded")
 
         # create simulation folder
@@ -137,15 +139,8 @@ class Simulator:
         anchor_ds.set_frequency(
             self.config.Dataset.anchor_base_freq / len(self.config.Dataset.anchor_sets))
 
-        plaut_size = len(plaut_ds)
-        anchor_size = len(anchor_ds)
-        probe_size = len(probe_ds)
-
-        # initialize DataLoaders
-        return ((DataLoader(plaut_ds, batch_size=plaut_size, num_workers=0),
-                 DataLoader(anchor_ds, batch_size=anchor_size, num_workers=0),
-                 DataLoader(probe_ds, batch_size=probe_size, num_workers=0)),
-                (plaut_size, anchor_size, probe_size))
+        # return datasets and sizes
+        return plaut_ds, anchor_ds, probe_ds
 
     def train(self):
         """
@@ -199,22 +194,11 @@ class Simulator:
                 optimizer = self.set_optimizer(current_optim)
 
             """ PLAUT DATASET """
-            correct = np.zeros(len(self.config.Dataset.plaut_types))
-            total = np.zeros(len(self.config.Dataset.plaut_types))
-            compare, hl, ol = [], [], []
+            data = self.plaut_ds[:]  # load data
+            loss, correct, total, compare, hl_activations, ol_activations = self.predict(
+                data, categories=self.config.Dataset.plaut_types)  # find loss and accuracy
 
-            data = None
-            for i, data in enumerate(self.plaut_loader):
-                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(
-                    data, categories=self.config.Dataset.plaut_types)  # find loss and accuracy
-
-                epoch_loss += loss  # accumulate loss
-
-                correct += temp_correct  # accumulate correct
-                total += temp_total  # accumulate total
-                compare += temp_compare
-                hl.append(temp_hl)
-                ol.append(temp_ol)
+            epoch_loss += loss  # accumulate loss
 
             # save plaut accuracy results
             plaut_accuracy.append_row(epoch, (correct / total).tolist())
@@ -229,38 +213,26 @@ class Simulator:
 
             # save hidden and output layer data
             if epoch >= self.config.Training.anchor_epoch and epoch % self.config.Training.plot_freq == 0:
-                hl = np.vstack(hl)  # concatenate data
-                hidden_layer_data.add_rows([epoch] * hl.shape[0], {
+                hidden_layer_data.add_rows([epoch] * hl_activations.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
-                    'activation': hl.tolist()
+                    'activation': hl_activations.tolist()
                 })
-                ol = np.vstack(ol)
-                output_layer_data.add_rows([epoch] * ol.shape[0], {
+                output_layer_data.add_rows([epoch] * ol_activations.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
-                    'activation': ol.tolist()
+                    'activation': ol_activations.tolist()
                 })
 
             """ ANCHOR DATASET """
-            correct = np.zeros(len(self.config.Dataset.anchor_types))
-            total = np.zeros(len(self.config.Dataset.anchor_types))
-            compare, hl, ol = [], [], []
+            data = self.anchor_ds[:]  # load data
 
-            data = None
-            for i, data in enumerate(self.anchor_loader):
-                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(
-                    data, categories=self.config.Dataset.anchor_types)  # find loss and accuracy
+            loss, correct, total, compare, hl_activations, ol_activations = self.predict(
+                data, categories=self.config.Dataset.anchor_types)  # find loss and accuracy
 
-                # accumulate loss when anchors are added into training set
-                if epoch > self.config.Training.anchor_epoch:
-                    epoch_loss += loss
-
-                correct += temp_correct  # accumulate correct
-                total += temp_total  # accumulate total
-                compare += temp_compare
-                hl.append(temp_hl)
-                ol.append(temp_ol)
+            # accumulate loss when anchors are added into training set
+            if epoch > self.config.Training.anchor_epoch:
+                epoch_loss += loss
 
             # save anchor accuracy results
             anchor_accuracy.append_row(epoch, (correct / total).tolist())
@@ -276,34 +248,21 @@ class Simulator:
 
             # save hidden and output layer data
             if epoch >= self.config.Training.anchor_epoch and epoch % (self.config.Training.plot_freq / 10) == 0:
-                hl = np.vstack(hl)  # concatenate data
-                hidden_layer_data.add_rows([epoch] * hl.shape[0], {
+                hidden_layer_data.add_rows([epoch] * hl_activations.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
-                    'activation': hl.tolist()
+                    'activation': hl_activations.tolist()
                 })
-                ol = np.vstack(ol)
-                output_layer_data.add_rows([epoch] * ol.shape[0], {
+                output_layer_data.add_rows([epoch] * ol_activations.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
-                    'activation': ol.tolist()
+                    'activation': ol_activations.tolist()
                 })
 
             """ PROBE DATASET """
-            correct = np.zeros(len(self.config.Dataset.probe_types))
-            total = np.zeros(len(self.config.Dataset.probe_types))
-            compare, hl, ol = [], [], []
-
-            data = None
-            for i, data in enumerate(self.probe_loader):
-                loss, temp_correct, temp_total, temp_compare, temp_hl, temp_ol = self.predict(
-                    data, categories=self.config.Dataset.probe_types)  # find loss and accuracy
-
-                correct += temp_correct  # accumulate correct
-                total += temp_total  # accumulate total
-                compare += temp_compare
-                hl.append(temp_hl)
-                ol.append(temp_ol)
+            data = self.probe_ds[:]
+            loss, correct, total, compare, hl_activations, ol_activations = self.predict(
+                data, categories=self.config.Dataset.probe_types)  # find loss and accuracy
 
             # save probe accuracy results
             probe_accuracy.append_row(epoch, (correct / total).tolist())
@@ -319,17 +278,15 @@ class Simulator:
 
             # save hidden and output layer data
             if epoch >= self.config.Training.anchor_epoch and epoch % (self.config.Training.plot_freq / 10) == 0:
-                hl = np.vstack(hl)
-                hidden_layer_data.add_rows([epoch] * hl.shape[0], {
+                hidden_layer_data.add_rows([epoch] * hl_activations.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
-                    'activation': hl.tolist()
+                    'activation': hl_activations.tolist()
                 })
-                ol = np.vstack(ol)
-                output_layer_data.add_rows([epoch] * ol.shape[0], {
+                output_layer_data.add_rows([epoch] * ol_activations.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
-                    'activation': ol.tolist()
+                    'activation': ol_activations.tolist()
                 })
 
             """ UPDATE PARAMETERS, PLOT, SAVE """
@@ -352,8 +309,7 @@ class Simulator:
             if epoch % self.config.Training.print_freq == 0:
                 epoch_time = time.time() - epoch_time
                 time_data.append_row(epoch, epoch_time)
-                self.logger.info(
-                    f"[EPOCH {epoch}] \t loss: {epoch_loss.item():.4f} \t time: {epoch_time:.4f}")
+                self.logger.info( f"[Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {epoch_time:.4f}")
 
             # save checkpoint
             if epoch in self.config.Checkpoint.cp_epochs:

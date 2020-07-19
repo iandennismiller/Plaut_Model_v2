@@ -4,7 +4,7 @@ results_tool.py
 === SUMMARY ===
 Description     : Class to store results and plot
 Date Created    : May 04, 2020
-Last Updated    : July 18, 2020
+Last Updated    : July 19, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -13,6 +13,8 @@ Last Updated    : July 18, 2020
     - simulation label is added to plots
 
 === UPDATE NOTES ===
+ > July 19, 2020
+    - add changes for pd.Series values in add_rows function
  > July 18, 2020
     - minor reformatting changes
  > July 12, 2020
@@ -107,17 +109,23 @@ class Results:
             values_dict {dict} -- dictionary containing the values to be added
         """
 
-        assert set(values_dict.keys()) == set(self.values.keys())
+        assert set(values_dict.keys()) == set(self.values.keys())  # assert that keys match
 
         self.index += indices  # add the row indices
 
         for key in values_dict.keys():  # add the values based on the respective keys
             if type(values_dict[key]) == list:
-                assert len(values_dict[key]) == len(
-                    indices), f"ERROR: Length of values for {key} is not equal to length of indices"
+                assert len(values_dict[key]) == len(indices), \
+                    f"Length of {key} values not equal to length of indices"
                 self.values[key] += values_dict[key]
-            else:
+            elif type(values_dict[key]) == pd.Series:
+                assert len(values_dict[key]) == len(indices), \
+                    f"Length of {key} values not equal to length of indices"
+                self.values[key] += values_dict[key].tolist()
+            elif type(values_dict[key]) in [int, float]:
                 self.values[key] += [values_dict[key]] * len(indices)
+            else:
+                raise TypeError(f"Type of values must be int, float, list, or pd.Series")
 
         self.shape = (self.shape[0] + len(indices), self.shape[1])
 
@@ -212,5 +220,5 @@ class Results:
         """
 
         df = pd.DataFrame(data=self.values, index=self.index)  # create pandas dataframe
-        df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.csv.gz",
+        df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.csv",
                   index_label=index_label)  # save as compressed csv
