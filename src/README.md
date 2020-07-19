@@ -4,7 +4,7 @@
 
 Note: For `str` type parameters, quotation marks `'`, `"` are not required.
 
-Note: For `list` type parameters, square brakets `[]` are not required.
+Note: For `list` type parameters, square brackets `[]` are not required.
 
 ### General Settings (under `[general]`)
 > **`label`**
@@ -64,7 +64,7 @@ In progress.
 > **`anc_freq`**
 * Type: `float`
 * Description: Base frequency of anchors that will be adjusted based on dilution
-* Requird (recommended: `10`)
+* Required (recommended: `10`)
 > **`track_plaut_types`**
 * Type: `list`
 * Description: word types to calculate accuracy for in the Plaut Dataset; accuracy for all word types will be calculated if left blank

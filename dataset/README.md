@@ -21,7 +21,7 @@ In addition, Plaut Dataset files must consist of the following column:
 
 Optionally, Plaut Dataset files may consist of the following column:
 > `log_freq`: containing a scaled frequency based on a natural logarithm
-> - This frequency is calulated by `ln(F+2)` where `ln` denotes the natural logarithm and `F` denotes the frewuency of a word
+> - This frequency is calculated by `ln(F+2)` where `ln` denotes the natural logarithm and `F` denotes the frequency of a word
 > - If the `log_freq` column is not provided, the simulation code will automatically calculate this column
 
 #### Sample Plaut Dataset File
