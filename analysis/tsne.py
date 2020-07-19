@@ -4,9 +4,12 @@ tsne.py
 === SUMMARY ===
 Description     : Create a t-SNE plot
 Date Created    : May 03, 2020
-Last Updated    : June 16, 2020
+Last Updated    : July 18, 2020
 
 === UPDATE NOTES ===
+ > July 18, 2020
+    - Code reformatting
+    - typo fixes
  > June 13, 2020
     - change filepaths to allow addition of output layer code
     - modify function to choose neighbours (based on same vowel + similar coda)
@@ -26,17 +29,16 @@ from matplotlib import pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
 from scipy.spatial.distance import cosine
-
-pd.options.mode.chained_assignment = None
-
 import os
 import shutil
 
-filepath = "../results/BASE-S1D1O1-jun13"
+pd.options.mode.chained_assignment = None
+
+results_filepath = "../results/BASE-S1D1O1-jun13"
 pd.set_option('display.max_rows', 10000)
 
 
-class TSNE_plotter():
+class TsnePlotter:
     __CODA_SIMILARITY_MAX = 0.01
 
     def __init__(self, filepath):
@@ -71,7 +73,8 @@ class TSNE_plotter():
         # self.hl_df['label'] = self.hl_df['category'].astype('category').cat.codes
         # self.hl_df['hl_activation'] = self.hl_df['hl_activation'].apply(lambda x: np.array(x))
 
-    def recategorize(self, x):
+    @staticmethod
+    def recategorize(x):
         if 'ANC' in x:
             return 'ANCHOR'
         elif 'PRO' in x:
@@ -79,7 +82,7 @@ class TSNE_plotter():
         else:
             return 'BASE'
 
-    def find_neighbours(self, target, epoch, n):
+    def find_neighbours(self, target, epoch):
         """
         Find the neighbours that share a common vowel phoneme at the anchor epoch
 
@@ -95,7 +98,7 @@ class TSNE_plotter():
         base = base[base['max_vowel'].isin(target['max_vowel'].tolist())]
         base['coda_similarity'] = base['activation'].apply(
             lambda x: cosine(x[37:], target['activation'].tolist()[0][37:]))
-        base = base[base['coda_similarity'] < TSNE_plotter.__CODA_SIMILARITY_MAX]
+        base = base[base['coda_similarity'] < TsnePlotter.__CODA_SIMILARITY_MAX]
 
         print(target['orth'], base['orth'].tolist())
         return base['orth'].tolist()
@@ -109,7 +112,7 @@ class TSNE_plotter():
             n {int} -- number of closest neighbours to find
 
         Returns:
-            neighbours {list} -- list of orthography of the nearest neighours of the target words
+            neighbours {list} -- list of orthography of the nearest neighbours of the target words
         """
         base = self.hl_df[(self.hl_df['category'] == 'BASE') & (self.hl_df['epoch'] == epoch)].reset_index(drop=True)
         base_activations = np.array(base['activation'].tolist())
@@ -126,7 +129,8 @@ class TSNE_plotter():
 
         return neighbours
 
-    def find_distances(self, df, anchor, probes, epoch):
+    @staticmethod
+    def find_distances(df, anchor, probes, epoch):
         """
         Find the average distance:
          1. between the anchor and the base vocabulary
@@ -162,7 +166,8 @@ class TSNE_plotter():
 
         return anchor_base_dist, anchor_probe_dist, probe_base_dist / len(probes)
 
-    def label_category(self, row, neighbours1, neighbours2):
+    @staticmethod
+    def label_category(row, neighbours1, neighbours2):
         """
         Labels the base vocab words that are neighbours
         Args:
@@ -248,7 +253,7 @@ class TSNE_plotter():
         #     imageio.mimsave(f'{self.rootdir}/tsne.gif', images)
 
 
-t = TSNE_plotter(filepath)
+t = TsnePlotter(results_filepath)
 
 # REGULARS
 anchors = ['shing']

@@ -4,7 +4,7 @@ simulator.py
 === SUMMARY ===
 Description     : Code for running simulation for training model and saving results
 Date Created    : May 03, 2020
-Last Updated    : July 12, 2020
+Last Updated    : July 18, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -17,11 +17,14 @@ Last Updated    : July 12, 2020
           (v1 required the DataLoader to be iterated twice)
         - option of saving a notes.txt after training is removed (it was rarely used in v1)
     - added option to delete folder if one with the same name exists
-    - removed option to delete folder after error (this can be done with the option just above by rerunning the simulation again)
+    - removed option to delete folder after error (this can be done with the option above by rerunning the simulation)
     - added assert statements for error checking of user input
-    - anchors are now placed in one single csv file, and sets are chosen in config.cfg rather than making different csv files
+    - anchors are now placed in one single csv file, and anchor sets are chosen in config.cfg
 
 === UPDATE NOTES ===
+ > July 18, 2020
+    - minor reformatting changes
+    - add preliminary logging system
  > July 12, 2020
     - add target radius in predict function
  > June 13, 2020
@@ -36,7 +39,7 @@ Last Updated    : July 12, 2020
  > May 07, 2020
     - Edit method of loading parameters from config file
     - add saving of output data in csv
-    - modify anchor frequency to be user adjustible
+    - modify anchor frequency to be user adjustable
     - adjust code based on changes in the results class
     - add additional docstrings for functions
  > May 06, 2020
@@ -58,15 +61,17 @@ from torch.utils.data import DataLoader
 import time
 import numpy as np
 
-from src.dataset import Plaut_Dataset
-from src.model import Plaut_Net
+from src.dataset import PlautDataset
+from src.model import PlautNet
 from src.helpers import *
 from src.results_tool import Results
 
 from config.config import Config
 
+import logging
 
-class Simulator():
+
+class Simulator:
     def __init__(self, config_filepath):
         """
         Initializes Simulator object
@@ -74,67 +79,73 @@ class Simulator():
         Arguments:
             config_filepath {str} -- filepath of the configuration file
         """
-
-        print("Initializing Simulator...")
+        # initialize logger
+        self.logger = logging.getLogger('__main__.'+__name__)
+        self.logger.info("Initializing Simulator")
 
         # load config and set random seed
         self.config = Config(config_filepath)
         torch.manual_seed(self.config.General.random_seed)
-        print("--Configuration Loaded")
+        self.logger.debug("Configuration successfully loaded")
 
         # load data
-        self.load_data()
-        print("--Datasets Loaded")
+        data_loaders, samples = self.load_data()
+        self.plaut_loader, self.anchor_loader, self.probe_loader = data_loaders
+        self.plaut_size, self.anchor_size, self.probe_size = samples
+        self.logger.debug("Datasets successfully loaded")
 
         # create simulation folder
         rootdir, label = create_simulation_folder(self.config.General.label)
         self.config.General.label = label
         self.config.General.rootdir = rootdir
-        print(f"--Simulation Results will be stored in: {self.config.General.rootdir}")
+        self.logger.info(f"Simulation Results will be stored in: {self.config.General.rootdir}")
 
         # initialize model
-        self.model = Plaut_Net()
-        print("--Model Initialized")
+        self.model = PlautNet()
+        self.criterion = None
+        self.logger.debug("Model successfully initialized")
+        self.logger.info("Simulator initialization completed")
 
     def load_data(self):
         """
         Creates the DataLoader objects for training
         """
         # create the custom datasets
-        self.plaut_ds = Plaut_Dataset(self.config.Dataset.plaut_filepath)
-        self.anchor_ds = Plaut_Dataset(self.config.Dataset.anchor_filepath)
-        self.probe_ds = Plaut_Dataset(self.config.Dataset.probe_filepath)
+        plaut_ds = PlautDataset(self.config.Dataset.plaut_filepath)
+        anchor_ds = PlautDataset(self.config.Dataset.anchor_filepath)
+        probe_ds = PlautDataset(self.config.Dataset.probe_filepath)
 
         # get the types to track from the dataset if not given
         if self.config.Dataset.plaut_types == ['']:
-            self.config.Dataset.plaut_types = list(self.plaut_ds.get_types())
+            self.config.Dataset.plaut_types = list(plaut_ds.get_types())
         else:
             assert set(self.config.Dataset.plaut_types).issubset(
-                self.plaut_ds.get_types()), "ERROR: Word types must exist in dataset."
+                plaut_ds.get_types()), "ERROR: Word types must exist in dataset."
         if self.config.Dataset.anchor_types == ['']:
-            self.config.Dataset.anchor_types = list(self.anchor_ds.get_types())
+            self.config.Dataset.anchor_types = list(anchor_ds.get_types())
         else:
             assert set(self.config.Dataset.anchor_types).issubset(
-                self.anchor_ds.get_types()), "ERROR: Word types must exist in dataset."
+                anchor_ds.get_types()), "ERROR: Word types must exist in dataset."
         if self.config.Dataset.probe_types == ['']:
-            self.config.Dataset.probe_types = list(self.probe_ds.get_types())
+            self.config.Dataset.probe_types = list(probe_ds.get_types())
         else:
             assert set(self.config.Dataset.probe_types).issubset(
-                self.probe_ds.get_types()), "ERROR: Word types must exist in dataset."
+                probe_ds.get_types()), "ERROR: Word types must exist in dataset."
 
         # choose the specified anchor sets and set frequency appropriately
-        self.anchor_ds.restrict_set(self.config.Dataset.anchor_sets)
-        self.anchor_ds.set_frequency(
+        anchor_ds.restrict_set(self.config.Dataset.anchor_sets)
+        anchor_ds.set_frequency(
             self.config.Dataset.anchor_base_freq / len(self.config.Dataset.anchor_sets))
 
-        self.plaut_samples = len(self.plaut_ds)
-        self.anchor_samples = len(self.anchor_ds)
-        self.probe_samples = len(self.probe_ds)
+        plaut_size = len(plaut_ds)
+        anchor_size = len(anchor_ds)
+        probe_size = len(probe_ds)
 
         # initialize DataLoaders
-        self.plaut_loader = DataLoader(self.plaut_ds, batch_size=len(self.plaut_ds), num_workers=0)
-        self.anchor_loader = DataLoader(self.anchor_ds, batch_size=len(self.anchor_ds), num_workers=0)
-        self.probe_loader = DataLoader(self.probe_ds, batch_size=len(self.probe_ds), num_workers=0)
+        return ((DataLoader(plaut_ds, batch_size=plaut_size, num_workers=0),
+                 DataLoader(anchor_ds, batch_size=anchor_size, num_workers=0),
+                 DataLoader(probe_ds, batch_size=probe_size, num_workers=0)),
+                (plaut_size, anchor_size, probe_size))
 
     def train(self):
         """
@@ -175,6 +186,8 @@ class Simulator():
         if self.config.Checkpoint.checkpoint_file != "":
             start_epoch, optimizer = self.load_checkpoint()
 
+        optimizer = None
+
         """ TRAINING LOOP """
         for epoch in range(start_epoch, self.config.Training.total_epochs + 1):
             epoch_time = time.time()
@@ -207,7 +220,7 @@ class Simulator():
             plaut_accuracy.append_row(epoch, (correct / total).tolist())
 
             output_data.add_rows([epoch] * len(compare), {
-                'example_id': list(range(1, 1 + self.plaut_samples)),
+                'example_id': list(range(1, 1 + self.plaut_size)),
                 'orth': data['orth'],
                 'phon': data['phon'],
                 'category': data['type'],
@@ -254,7 +267,7 @@ class Simulator():
 
             # save output data
             output_data.add_rows([epoch] * len(compare), {
-                'example_id': list(range(1 + self.plaut_samples, 1 + self.plaut_samples + self.anchor_samples)),
+                'example_id': list(range(1 + self.plaut_size, 1 + self.plaut_size + self.anchor_size)),
                 'orth': data['orth'],
                 'phon': data['phon'],
                 'category': data['type'],
@@ -296,8 +309,8 @@ class Simulator():
             probe_accuracy.append_row(epoch, (correct / total).tolist())
 
             output_data.add_rows([epoch] * len(compare), {
-                'example_id': list(range(1 + self.plaut_samples + self.anchor_samples,
-                                         1 + self.plaut_samples + self.anchor_samples + self.probe_samples)),
+                'example_id': list(range(1 + self.plaut_size + self.anchor_size,
+                                         1 + self.plaut_size + self.anchor_size + self.probe_size)),
                 'orth': data['orth'],
                 'phon': data['phon'],
                 'category': data['type'],
@@ -330,16 +343,16 @@ class Simulator():
 
             # plot results
             if epoch % self.config.Training.plot_freq == 0:
-                training_loss.lineplot()
-                plaut_accuracy.lineplot()
-                anchor_accuracy.lineplot()
-                probe_accuracy.lineplot()
+                training_loss.line_plot()
+                plaut_accuracy.line_plot()
+                anchor_accuracy.line_plot()
+                probe_accuracy.line_plot()
 
             # print statistics
             if epoch % self.config.Training.print_freq == 0:
                 epoch_time = time.time() - epoch_time
                 time_data.append_row(epoch, epoch_time)
-                print(
+                self.logger.info(
                     f"[EPOCH {epoch}] \t loss: {epoch_loss.item():.4f} \t time: {epoch_time:.4f}")
 
             # save checkpoint
@@ -348,7 +361,7 @@ class Simulator():
 
         """ SAVE RESULTS, PLOT, AND FINISH """
         # save output data
-        total_samples = self.plaut_samples + self.anchor_samples + self.probe_samples
+        total_samples = self.plaut_size + self.anchor_size + self.probe_size
         output_data.add_columns({
             'error': [0] * len(output_data),
             'random_seed': [self.config.General.random_seed] * len(output_data),
@@ -366,21 +379,24 @@ class Simulator():
                     epoch_end = min(int(
                         self.config.Optimizer.optim_config['start_epoch'][i + 1]),
                         self.config.Training.total_epochs + 1)
-                except:
+                except IndexError:
                     epoch_end = self.config.Training.total_epochs + 1
                 for k in range(total_samples):  # once per every word
-                    temp += [self.config.Optimizer.optim_config[key][i]
-                             for j in range(epoch_start, epoch_end)]  # once per every epoch
+                    temp += [self.config.Optimizer.optim_config[key][i]] * (epoch_end-epoch_start)
             output_data.add_columns({key: temp})
 
         # save data as .csv.gz files and produce final plots
         output_data.save_data(index_label='epoch')
+        self.logger.info('Output data saved successfully')
         hidden_layer_data.save_data(index_label='epoch')
+        self.logger.info('Hidden layer activations saved successfully')
         output_layer_data.save_data(index_label='epoch')
-        time_data.lineplot()
-        plaut_accuracy.barplot()
-        anchor_accuracy.barplot()
-        probe_accuracy.barplot()
+        self.logger.info('Output layer activations saved successfully')
+        time_data.line_plot()
+        plaut_accuracy.bar_plot()
+        anchor_accuracy.bar_plot()
+        probe_accuracy.bar_plot()
+        self.logger.info('Simulation completed.')
 
     def set_optimizer(self, i):
         """
@@ -403,7 +419,7 @@ class Simulator():
     def predict(self, data, categories=None):
         """
         Makes predictions given the current model, as well as calculate loss and accuracy
-        (Accuracy given as two seperate lists of correct and total)
+        (Accuracy given as two separate lists of correct and total)
 
         Arguments:
             data {dict} -- dictionary of data given by the DataLoader

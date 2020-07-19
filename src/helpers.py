@@ -4,14 +4,17 @@ helpers.py
 === SUMMARY ===
 Description     : Miscellaneous helper functions
 Date Created    : May 03, 2020
-Last Updated    : May 03, 2020
+Last Updated    : July 18, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1:
     - make_folder function renamed to create_simulation_folder, and now forces a folder label to be given
 
 === UPDATE NOTES ===
- > May 24, 2010
+ > July 18, 2020
+    - formatting changes
+    - fix too broad except clause
+ > May 24, 2020
     - Move helper functions from plaut_model.py into this file
     - update string format, filepath, import statements
  > May 08, 2020
@@ -26,7 +29,7 @@ import shutil
 
 def create_simulation_folder(dir_label):
     # create a new folder for every run
-    rootdir = "results/"+dir_label
+    rootdir = "results/" + dir_label
     try:
         os.mkdir(rootdir)
     except FileExistsError:
@@ -45,10 +48,10 @@ def create_simulation_folder(dir_label):
                     new_rootdir = f"{rootdir}_{i}"
                     os.mkdir(new_rootdir)
                     break
-                except:
+                except FileExistsError:
                     i += 1
             rootdir = new_rootdir
             dir_label = f"{dir_label}_{i}"
     for subdir in ["Training Loss", "Training Accuracy", "Anchor Accuracy", "Probe Accuracy"]:
-        os.mkdir(rootdir+"/"+subdir)
+        os.mkdir(rootdir + "/" + subdir)
     return rootdir, dir_label

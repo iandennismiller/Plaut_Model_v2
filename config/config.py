@@ -1,12 +1,15 @@
 """
-simulator.py
+config.py
 
 === SUMMARY ===
 Description     : Load information from config file
 Date Created    : July 12, 2020
-Last Updated    : July 12, 2020
+Last Updated    : July 18, 2020
 
 === UPDATE NOTES ===
+ > July 18, 2020
+    - date format change
+    - fix broad except clause
  > July 12, 2020
     - initial file creation
 """
@@ -34,7 +37,7 @@ class Config:
             self.random_seed = int(config['general']['random_seed'])
             self.dilution = len(Dataset.anchor_sets)
             self.order = 1 if 1 in Dataset.anchor_sets else max(Dataset.anchor_sets)
-            self.date = datetime.today().strftime("%Y_%m_%d")
+            self.date = datetime.today().strftime("%Y%m%d")
             self.label = f"{config['general']['label']}-S{self.random_seed}D{self.dilution}O{self.order}-{self.date}"
             self.rootdir = None
 
@@ -88,7 +91,7 @@ class Config:
                     for category in ['learning_rate', 'momentum', 'weight_decay']:
                         self.optim_config[category].append(float(config['optim' + str(i)][category]))
                     i += 1
-                except:
+                except KeyError:
                     break
 
             assert set(self.optim_config['optimizer']).issubset({'Adam', 'SGD'}), "ERROR: Only Adam or SGD can be used."

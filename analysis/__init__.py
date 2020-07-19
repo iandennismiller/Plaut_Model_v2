@@ -1,1 +1,1 @@
-from analysis.tsne import TSNE_plotter
+from analysis.tsne import TsnePlotter
