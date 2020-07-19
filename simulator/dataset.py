@@ -4,7 +4,7 @@ dataset.py
 === SUMMARY === 
 Description     : Defines class for custom dataset for Plaut Model and functions to generate grapheme/phoneme vectors
 Date Created    : May 03, 2020
-Last Updated    : July 18, 2020
+Last Updated    : July 19, 2020
 
 === DETAILED DESCRIPTION ===
  > Functionality
@@ -14,34 +14,20 @@ Last Updated    : July 18, 2020
    - in plaut_dataset.__getitem__, return {type, orth, phon} as lists instead of pandas Series
 
 === UPDATE NOTES ===
+ > July 19, 2020
+    - move grapheme and phoneme mapping to constants class
  > July 18, 2020
     - minor typo fixes and formatting changes
  > May 03, 2020
     - File created, initial code written
 """
 
-import pandas as pd
+from common.constants import VectorMapping
+
 import numpy as np
+import pandas as pd
 import torch as torch
 from torch.utils.data import Dataset
-
-# MAPPINGS FOR GRAPHEMES (30 onset, 27 vowel, 48 codas for total of 105)
-grapheme_onset = ['Y', 'S', 'P', 'T', 'K', 'Q', 'C', 'B', 'D', 'G', 'F', 'V', 'J', 'Z',
-                  'L', 'M', 'N', 'R', 'W', 'H', 'CH', 'GH', 'GN', 'PH', 'PS', 'RH', 'SH', 'TH', 'TS', 'WH']
-grapheme_vowel = ['E', 'I', 'O', 'U', 'A', 'Y', 'AI', 'AU', 'AW', 'AY', 'EA', 'EE', 'EI',
-                  'EU', 'EW', 'EY', 'IE', 'OA', 'OE', 'OI', 'OO', 'OU', 'OW', 'OY', 'UE', 'UI', 'UY']
-grapheme_codas = ['H', 'R', 'L', 'M', 'N', 'B', 'D', 'G', 'C', 'X', 'F', 'V', 'J', 'S', 'Z', 'P', 'T', 'K', 'Q', 'BB',
-                  'CH', 'CK', 'DD', 'DG',
-                  'FF', 'GG', 'GH', 'GN', 'KS', 'LL', 'NG', 'NN', 'PH', 'PP', 'PS', 'RR', 'SH', 'SL', 'SS', 'TCH', 'TH',
-                  'TS', 'TT', 'ZZ', 'U', 'E', 'ES', 'ED']
-
-# MAPPINGS FOR PHONEMES (23 onset, 14 vowel, 24 codas for total of 61)
-phoneme_onset = ['s', 'S', 'C', 'z', 'Z', 'j', 'f', 'v', 'T', 'D',
-                 'p', 'b', 't', 'd', 'k', 'g', 'm', 'n', 'h', 'l', 'r', 'w', 'y']
-phoneme_vowel = ['a', 'e', 'i', 'o', 'u', '@',
-                 '^', 'A', 'E', 'I', 'O', 'U', 'W', 'Y']
-phoneme_codas = ['r', 'l', 'm', 'n', 'N', 'b', 'g', 'd', 'ps', 'ks',
-                 'ts', 's', 'z', 'f', 'v', 'p', 'k', 't', 'S', 'Z', 'T', 'D', 'C', 'j']
 
 
 class PlautDataset(Dataset):
@@ -140,6 +126,10 @@ def get_graphemes(word):
     if word == "NAN":  # the word null automatically gets imported as "NaN" in dataframe, so fix that
         word = "NULL"
 
+    grapheme_onset = VectorMapping.grapheme_onset
+    grapheme_vowel = VectorMapping.grapheme_vowel
+    grapheme_codas = VectorMapping.grapheme_codas
+
     # initialize vectors to zero
     onset = [0] * len(grapheme_onset)
     vowel = [0] * len(grapheme_vowel)
@@ -182,6 +172,10 @@ def get_graphemes(word):
 
 # similar idea to graphemes; refer to above for comments
 def get_phonemes(phon):
+    phoneme_onset = VectorMapping.phoneme_onset
+    phoneme_vowel = VectorMapping.phoneme_vowel
+    phoneme_codas = VectorMapping.phoneme_codas
+
     phon = phon[1:-1]
     onset = [0] * len(phoneme_onset)
     vowel = [0] * len(phoneme_vowel)

@@ -4,14 +4,14 @@ helpers.py
 === SUMMARY ===
 Description     : Miscellaneous helper functions
 Date Created    : May 03, 2020
-Last Updated    : July 18, 2020
+Last Updated    : July 19, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1:
     - make_folder function renamed to create_simulation_folder, and now forces a folder label to be given
 
 === UPDATE NOTES ===
- > July 18, 2020
+ > July 19, 2020
     - formatting changes
     - fix too broad except clause
  > May 24, 2020
@@ -26,6 +26,7 @@ Last Updated    : July 18, 2020
 
 import os
 import shutil
+
 
 def create_simulation_folder(dir_label):
     # create a new folder for every run
