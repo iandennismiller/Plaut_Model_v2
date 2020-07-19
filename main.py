@@ -7,7 +7,7 @@ Date Created    : May 03, 2020
 Last Updated    : July 18, 2020
 
 === DETAILED DESCRIPTION ===
- > Given the parameters config.cfg file, this script will run a series of
+ > Given the parameters simulator_config.cfg file, this script will run a series of
    tests with combinations of anchor sets and random seeds
 
 === UPDATE NOTES ===
@@ -28,7 +28,7 @@ import argparse
 import configparser
 import logging
 import sys
-from src.simulator import Simulator
+from simulator.simulator import Simulator
 
 parser = argparse.ArgumentParser(description='This script will run a series of \
     simulations with all possible combinations of anchor sets and random seeds given. \
@@ -42,17 +42,17 @@ parser.add_argument('-seed', '-s', nargs='+', type=int, default=[], help='the ra
 
 def write_config_file(anchor, random_seed):
     config = configparser.ConfigParser()
-    config.read('config/config.cfg')
+    config.read('config/simulator_config.cfg')
 
     config['dataset']['anchor_sets'] = str(anchor).strip('[]')
     config['general']['random_seed'] = str(random_seed)
 
-    with open('config/config.cfg', 'w') as configfile:
+    with open('config/simulator_config.cfg', 'w') as configfile:
         config.write(configfile)
 
 
 def run_simulation():
-    sim = Simulator("config/config.cfg")
+    sim = Simulator("config/simulator_config.cfg")
     sim.train()
 
 

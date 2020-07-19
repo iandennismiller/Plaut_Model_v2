@@ -1,5 +1,5 @@
 """
-config.py
+simulator_config.py
 
 === SUMMARY ===
 Description     : Load information from config file
@@ -7,6 +7,8 @@ Date Created    : July 12, 2020
 Last Updated    : July 18, 2020
 
 === UPDATE NOTES ===
+ > July 19, 2020
+    - remove option of specifying certain word types to track
  > July 18, 2020
     - date format change
     - fix broad except clause
@@ -70,9 +72,6 @@ class Config:
             self.probe_filepath = config['dataset']['probe']
             self.anchor_sets = [int(x) for x in config['dataset']['anchor_sets'].split(',')]
             self.anchor_base_freq = float(config['dataset']['anc_freq'])
-            self.plaut_types = [x.strip() for x in config['dataset']['track_plaut_types'].split(',')]
-            self.anchor_types = [x.strip() for x in config['dataset']['track_anchor_types'].split(',')]
-            self.probe_types = [x.strip() for x in config['dataset']['track_probe_types'].split(',')]
 
     class Optimizer:
         def __init__(self, config):

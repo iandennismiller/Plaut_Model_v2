@@ -1,1 +1,1 @@
-from config.config import *
+from config.simulator_config import *

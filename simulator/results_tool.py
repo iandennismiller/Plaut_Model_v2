@@ -15,6 +15,8 @@ Last Updated    : July 19, 2020
 === UPDATE NOTES ===
  > July 19, 2020
     - add changes for pd.Series values in add_rows function
+    - update docstring
+    - add label mapping for plots
  > July 18, 2020
     - minor reformatting changes
  > July 12, 2020
@@ -41,9 +43,8 @@ Last Updated    : July 19, 2020
     - basic functionality of saving data in lists and plotting completed
 """
 
-from matplotlib import pyplot as plt
 import pandas as pd
-
+from matplotlib import pyplot as plt
 
 class Results:
     def __init__(self, results_dir, config, title="", labels=("", ""), categories=None):
@@ -147,15 +148,18 @@ class Results:
         Adds multiple columns to the dictionary
 
         Arguments:
-            values_dict {[type]} -- dictionary consisting of keys and values representing the columns to be added
+            values_dict {dict} -- dictionary consisting of keys and values representing the columns to be added
         """
         self.values.update(values_dict)
 
         self.shape = (self.shape[0], self.shape[1] + 1)
 
-    def line_plot(self):
+    def line_plot(self, mapping=None):
         """
         Creates a Line Plot of all the data points
+
+        Arguments:
+            mapping: {dict} -- dictionary for label mapping from symbol to string
 
         NOTE: the data must be numeric for this function to work as intended
         """
@@ -164,7 +168,7 @@ class Results:
 
         # plot for each column
         for key in self.values.keys():
-            ax.plot(self.index, self.values[key], label=key)
+            ax.plot(self.index, self.values[key], label=mapping[key] if mapping else key)
 
         # axis labels, grid lines, and title
         plt.xlabel(self.x_label)
@@ -174,7 +178,7 @@ class Results:
 
         # add legend if needed
         if len(self.values) > 1:
-            plt.legend(loc='best')
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
 
         # add line for anchors if needed
         if max(self.index) > self.anchor:
