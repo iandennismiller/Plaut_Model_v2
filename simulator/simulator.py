@@ -4,7 +4,7 @@ simulator.py
 === SUMMARY ===
 Description     : Code for running simulation for training model and saving results
 Date Created    : May 03, 2020
-Last Updated    : July 19, 2020
+Last Updated    : July 26, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -22,6 +22,8 @@ Last Updated    : July 19, 2020
     - anchors are now placed in one single csv file, and anchor sets are chosen in simulator_config.cfg
 
 === UPDATE NOTES ===
+ > July 26, 2020
+    - implement "generalized" cross entropy loss
  > July 19, 2020
     - remove DataLoaders, simply use the existing Dataset class
     - minor logging change
@@ -72,6 +74,7 @@ from common.constants import WordTypes
 from simulator.dataset import PlautDataset
 from simulator.model import PlautNet
 from simulator.results_tool import Results
+from simulator.GCELoss import GCELoss
 
 
 class Simulator:
@@ -131,8 +134,8 @@ class Simulator:
         """
 
         """ SETUP """
-        # define loss function
-        self.criterion = nn.BCELoss(reduction='none')
+        # define loss function (generalized cross entropy loss)
+        self.criterion = GCELoss(reduction=None)
 
         # initialize results storage classes
         training_loss = Results(results_dir=self.config.General.rootdir + "/Training Loss",
@@ -406,6 +409,8 @@ class Simulator:
 
         # forward pass
         hl_outputs, outputs = self.model(inputs)
+        # clip outputs to prevent division by zero in loss calculation
+        outputs = torch.min(outputs, torch.full(outputs.shape, 1-self.config.Training.target_radius))
 
         # target radius
         if self.config.Training.target_radius > 0:
