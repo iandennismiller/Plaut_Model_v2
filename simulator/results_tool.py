@@ -4,7 +4,7 @@ results_tool.py
 === SUMMARY ===
 Description     : Class to store results and plot
 Date Created    : May 04, 2020
-Last Updated    : July 19, 2020
+Last Updated    : July 26, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -13,6 +13,8 @@ Last Updated    : July 19, 2020
     - simulation label is added to plots
 
 === UPDATE NOTES ===
+ > July 26, 2020
+    - re-add compression for csv files
  > July 19, 2020
     - add changes for pd.Series values in add_rows function
     - update docstring
@@ -45,6 +47,7 @@ Last Updated    : July 19, 2020
 
 import pandas as pd
 from matplotlib import pyplot as plt
+
 
 class Results:
     def __init__(self, results_dir, config, title="", labels=("", ""), categories=None):
@@ -224,5 +227,5 @@ class Results:
         """
 
         df = pd.DataFrame(data=self.values, index=self.index)  # create pandas dataframe
-        df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.csv",
+        df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.csv.gz",
                   index_label=index_label)  # save as compressed csv
