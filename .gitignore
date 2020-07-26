@@ -1,9 +1,21 @@
-# do not include results and saved checkpoints
-results/*
+# do not saved checkpoints, only the readme
 checkpoints/*
+!checkpoints/README.md
+
+# RESULTS
+# only include series simulations
+results/*-*-*
+# No running time plots
+results/*/*/Running Time *.png
+# Only plots at epoch 350 and 750, but no bar plots
+results/*/*/*/*.png
+!results/*/*/*/*350.png
+!results/*/*/*/*700.png
+results/*/*/*/*Bar*.png
+
 # but, include the readme file
 !results/README.md
-!checkpoints/README.md
+
 
 # ignore irrelevant folders
 __pycache__

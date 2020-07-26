@@ -24,6 +24,7 @@ Last Updated    : July 26, 2020
 === UPDATE NOTES ===
  > July 26, 2020
     - implement "generalized" cross entropy loss
+    - add series folder
  > July 19, 2020
     - remove DataLoaders, simply use the existing Dataset class
     - minor logging change
@@ -78,7 +79,7 @@ from simulator.GCELoss import GCELoss
 
 
 class Simulator:
-    def __init__(self, config_filepath):
+    def __init__(self, config_filepath, series=False):
         """
         Initializes Simulator object
 
@@ -100,7 +101,7 @@ class Simulator:
         self.logger.debug("Datasets successfully loaded")
 
         # create simulation folder
-        rootdir, label = create_simulation_folder(self.config.General.label)
+        rootdir, label = create_simulation_folder(self.config.General.label, series)
         self.config.General.label = label
         self.config.General.rootdir = rootdir
         self.logger.info(f"Simulation Results will be stored in: {self.config.General.rootdir}")
@@ -135,7 +136,7 @@ class Simulator:
 
         """ SETUP """
         # define loss function (generalized cross entropy loss)
-        self.criterion = GCELoss(reduction=None)
+        self.criterion = GCELoss(reduction='none')
 
         # initialize results storage classes
         training_loss = Results(results_dir=self.config.General.rootdir + "/Training Loss",
@@ -313,10 +314,12 @@ class Simulator:
                 probe_accuracy.line_plot(mapping=WordTypes.probe_mapping)
 
             # print statistics
-            if epoch % self.config.Training.print_freq == 0:
-                epoch_time = time.time() - epoch_time
-                time_data.append_row(epoch, epoch_time)
-                self.logger.info(f"[Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {epoch_time:.4f}")
+            epoch_time = time.time() - epoch_time
+            time_data.append_row(epoch, epoch_time)
+            if epoch % (self.config.Training.print_freq*10) == 0:
+                self.logger.info(f" [Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {epoch_time:.4f}")
+            else:
+                self.logger.debug(f"[Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {epoch_time:.4f}")
 
             # save checkpoint
             if epoch in self.config.Checkpoint.cp_epochs:
