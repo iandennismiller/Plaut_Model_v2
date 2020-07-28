@@ -1,0 +1,68 @@
+To make sense of how CE work with a targetRadius, it might be useful to have the following code snippet handy from the LENS simulator.  I paste the different relevant functions below.  In your case, zero error radius will be 0.0, since you have not implemented that variable.  
+
+
+
+The first point in the CrossEntropyError fucntion is that the line for the "adjustedTarget" is called earlier than the actual cross-entropy error.  This code is a little dense because it has some other general purpose functionality built in.  
+
+After you have called that function, you will now have a target that is not a zero or a 1.  This is relevant when you call the cross-entropy error function in LENS, because that function is actually generalized cross-entropy, not Binary cross-entropy, which is what I believe you are using by default.  What the LENS cross-entropy code will do is use binary cross-entropy if the target is a zero or a 1, otherwise it will fall back to generalize cross-entropy (which LENS calls SIMPLE_CROSS_ENTROPY").  Note that in these equations, the assumption is that targets and outputs are still bounded to the interval of [0,1].  You will see if you follow through that SIMPLE_CROSS_ENTROPY equation in your own code that you should have lower loss after applying the target radius than before.
+
+I am pretty sure that pytorch has a version of generalized cross-entropy built in as a loss function and that I have used it before.  You may just need to dig a little in the loss function documentation to find that error function.  If not, it is an easy loss function to write, so it should hopefully not be that bad to get this running and solve the current issue with your code.
+
+
+
+static void crossEntropyError(Group G, GroupProc P) {
+  real output, target, error = 0.0, unitError,
+    targetRadius = chooseValue(G->targetRadius, Net->targetRadius),
+    targetOneRadius = chooseValue(G->targetOneRadius, Net->targetOneRadius),
+    targetZeroScaling = chooseValue(G->targetZeroScaling, Net->targetZeroScaling),
+    zeroErrorRadius = chooseValue(G->zeroErrorRadius, Net->zeroErrorRadius);
+  if (targetRadius != 0.0 || targetOneRadius != 0.0 || zeroErrorRadius != 0.0 || targetZeroScaling != 1.0) {
+    FOR_EACH_UNIT(G, {
+      if (!isNaN(U->target)) {
+	output = U->output;  target = U->target;
+	if (targetOneRadius > 0.0 && target == 1.0) {
+	  target = U->adjustedTarget = 
+	    ADJUSTED_TARGET(output, target, targetOneRadius, zeroErrorRadius);
+	} else {
+	  target = U->adjustedTarget = 
+	    ADJUSTED_TARGET(output, target, targetRadius, zeroErrorRadius);
+	}
+	unitError = CROSS_ENTROPY_ERROR(output, target);
+	if (targetZeroScaling != 1.0 && U->target == 0.0) unitError *= targetZeroScaling ;
+	error += unitError ;
+      }
+    });
+  } else {
+    FOR_EACH_UNIT(G, {
+      if (!isNaN(U->target)) {
+	output = U->output;
+	target = U->adjustedTarget = U->target;
+	error += CROSS_ENTROPY_ERROR(output, target);
+      }
+    });
+  }
+  error *= G->errorScale / Net->ticksPerInterval * 
+    ((Net->pseudoExampleFreq) ? Net->currentExample->frequency : 1.0);
+  G->error += error;
+  Net->error += error;
+}
+
+
+
+/* If the output is within zr or tr of the target, the target is set to the 
+   output. Otherwise, the target is adjusted tr towards the output */
+#define ADJUSTED_TARGET(o,t,tr,zr) ((((o)-(t)) < (zr)) && ((o)-(t)) > (-zr))\
+                              ? o : (((o)-(t)) > (tr)) ? ((t)+(tr)) :\
+				(((o)-(t)) < (-tr)) ? ((t)-(tr)) : o;
+
+
+#define CROSS_ENTROPY_ERROR(y, d)\
+     (((d) == 0.0) ? CROSS_ENTROPY_ZERO_TARGET(y) :\
+       (((d) == 1.0) ? CROSS_ENTROPY_ONE_TARGET(y) :\
+	 SIMPLE_CROSS_ENTROPY(y, d)))
+
+
+#define SIMPLE_CROSS_ENTROPY(y, d)\
+     (((y) <= 0.0 || (y) >= 1.0) ? LARGE_VAL :\
+     (LOG((d)/(y))*(d) +\
+     LOG((1.0-(d))/(1.0-(y)))*(1.0-(d))))

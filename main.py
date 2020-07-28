@@ -4,13 +4,15 @@ plaut_model.py
 === SUMMARY ===
 Description     : Code for running a series of simulations
 Date Created    : May 03, 2020
-Last Updated    : July 18, 2020
+Last Updated    : July 26, 2020
 
 === DETAILED DESCRIPTION ===
  > Given the parameters simulator_config.cfg file, this script will run a series of
    tests with combinations of anchor sets and random seeds
 
 === UPDATE NOTES ===
+ > July 26, 2020
+    - add series folder
  > July 18, 2020
     - config filepath and parameter bug fix
     - formatting changes
@@ -51,25 +53,29 @@ def write_config_file(anchor, random_seed):
         config.write(configfile)
 
 
-def run_simulation():
-    sim = Simulator("config/simulator_config.cfg")
+def run_simulation(series=False):
+    sim = Simulator("config/simulator_config.cfg", series=series)
     sim.train()
 
 
 if __name__ == "__main__":
-    # set up logging
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s <%(name)s> %(levelname)s: %(message)s')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
     # parse and extract arguments
     args = parser.parse_args()
 
     assert args.sim_type in ['series', 'single'], "ERROR: Must select sim_type as 'series' or 'single'"
+
+    # set up logging
+    logger = logging.getLogger(__name__)
+    ch = logging.StreamHandler(sys.stdout)
+    if args.sim_type == "series":
+        logger.setLevel(logging.INFO)
+        ch.setLevel(logging.INFO)
+    else:
+        logger.setLevel(logging.DEBUG)
+        ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s <%(name)s> %(levelname)s: %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
     if args.sim_type == "series":
         max_dilution = args.anchor
@@ -87,15 +93,15 @@ if __name__ == "__main__":
             while len(up_sets) > 0:  # for each dilution level
                 logger.info(f"Testing with seed {seed} and anchor sets {up_sets}")
                 write_config_file(up_sets, seed)
-                run_simulation()
+                run_simulation(series=True)
                 up_sets.pop(-1)
 
             # downwards order
             while len(down_sets) > 0:  # for each dilution level
                 logger.info(f"Testing with seed {seed} and anchor sets {down_sets}")
                 write_config_file(down_sets, seed)
-                run_simulation()
+                run_simulation(series=True)
                 down_sets.pop(-1)
 
     else:
-        run_simulation()
+        run_simulation(series=False)

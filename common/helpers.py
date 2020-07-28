@@ -4,13 +4,17 @@ helpers.py
 === SUMMARY ===
 Description     : Miscellaneous helper functions
 Date Created    : May 03, 2020
-Last Updated    : July 19, 2020
+Last Updated    : July 27, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1:
     - make_folder function renamed to create_simulation_folder, and now forces a folder label to be given
 
 === UPDATE NOTES ===
+ > July 27, 2020
+    - add function to create analysis folder
+ > July 26, 2020
+    - add series folder
  > July 19, 2020
     - formatting changes
     - fix too broad except clause
@@ -28,9 +32,18 @@ import os
 import shutil
 
 
-def create_simulation_folder(dir_label):
+def create_simulation_folder(dir_label, series=False):
     # create a new folder for every run
-    rootdir = "results/" + dir_label
+    if series:
+        series_dir = "results/" + dir_label.split('-')[0] + "-" + dir_label.split('-')[-1]
+        try:
+            os.mkdir(series_dir)
+        except FileExistsError:
+            pass
+        rootdir = series_dir + "/" + dir_label
+    else:
+        rootdir = "results/" + dir_label
+
     try:
         os.mkdir(rootdir)
     except FileExistsError:
@@ -56,3 +69,30 @@ def create_simulation_folder(dir_label):
     for subdir in ["Training Loss", "Training Accuracy", "Anchor Accuracy", "Probe Accuracy"]:
         os.mkdir(rootdir + "/" + subdir)
     return rootdir, dir_label
+
+
+def create_analysis_folder(results_dir, analysis_type):
+    rootdir = results_dir + "/" + analysis_type
+    try:
+        os.mkdir(rootdir)
+    except FileExistsError:
+        while True:
+            replace = input(f"{rootdir} already exists. Replace? (Y/N)")
+            if replace in ['Y', 'N', 'y', 'n']:
+                break
+        if replace in ['Y', 'y']:
+            print("Overwriting existing directory...")
+            shutil.rmtree(rootdir)
+            os.mkdir(rootdir)
+        else:
+            i = 1
+            while True:
+                try:
+                    new_rootdir = f"{rootdir}_{i}"
+                    os.mkdir(new_rootdir)
+                    break
+                except FileExistsError:
+                    i += 1
+            rootdir = new_rootdir
+
+    return rootdir
