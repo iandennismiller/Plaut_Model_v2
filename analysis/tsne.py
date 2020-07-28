@@ -4,9 +4,11 @@ tsne.py
 === SUMMARY ===
 Description     : Create a t-SNE plot
 Date Created    : May 03, 2020
-Last Updated    : July 18, 2020
+Last Updated    : July 27, 2020
 
 === UPDATE NOTES ===
+ > July 27, 2020
+    - Code reorganization
  > July 18, 2020
     - Code reformatting
     - typo fixes
@@ -252,40 +254,41 @@ class TsnePlotter:
         #     images.append(imageio.imread(f"{self.rootdir}/{path}"))
         #     imageio.mimsave(f'{self.rootdir}/tsne.gif', images)
 
+if __name__ == "__main__":
 
-t = TsnePlotter(results_filepath)
+    t = TsnePlotter(results_filepath)
 
-# REGULARS
-anchors = ['shing']
-probes = ['ging', 'jing', 'ning', 'ting']
-t.create_tsne_series(anchors=anchors, probes=probes)
+    # REGULARS
+    anchors = ['shing']
+    probes = ['ging', 'jing', 'ning', 'ting']
+    t.create_tsne_series(anchors=anchors, probes=probes)
 
-anchors = ['slape']
-probes = ['blape', 'clape', 'brape', 'prape']
-t.create_tsne_series(anchors=anchors, probes=probes)
+    anchors = ['slape']
+    probes = ['blape', 'clape', 'brape', 'prape']
+    t.create_tsne_series(anchors=anchors, probes=probes)
 
-# EXCEPTION
-anchors = ['nust']
-probes = ['chust', 'pust', 'tust', 'drust']
-t.create_tsne_series(anchors=anchors, probes=probes)
+    # EXCEPTION
+    anchors = ['nust']
+    probes = ['chust', 'pust', 'tust', 'drust']
+    t.create_tsne_series(anchors=anchors, probes=probes)
 
-anchors = ['suff']
-probes = ['zuff', 'skuff', 'gluff', 'juff']
-t.create_tsne_series(anchors=anchors, probes=probes)
+    anchors = ['suff']
+    probes = ['zuff', 'skuff', 'gluff', 'juff']
+    t.create_tsne_series(anchors=anchors, probes=probes)
 
-anchors = ['geam']
-probes = ['veam', 'frem', 'keam', 'peam']
-t.create_tsne_series(anchors=anchors, probes=probes)
+    anchors = ['geam']
+    probes = ['veam', 'frem', 'keam', 'peam']
+    t.create_tsne_series(anchors=anchors, probes=probes)
 
-anchors = ['fank']
-probes = ['pank', 'slank', 'glank', 'brank']
-t.create_tsne_series(anchors=anchors, probes=probes)
+    anchors = ['fank']
+    probes = ['pank', 'slank', 'glank', 'brank']
+    t.create_tsne_series(anchors=anchors, probes=probes)
 
-# AMBIGUOUS
-anchors = ['grour']
-probes = ['brour', 'drour', 'prour', 'clour']
-t.create_tsne_series(anchors=anchors, probes=probes)
+    # AMBIGUOUS
+    anchors = ['grour']
+    probes = ['brour', 'drour', 'prour', 'clour']
+    t.create_tsne_series(anchors=anchors, probes=probes)
 
-anchors = ['plone']
-probes = ['blone', 'frone', 'slone', 'smone']
-t.create_tsne_series(anchors=anchors, probes=probes)
+    anchors = ['plone']
+    probes = ['blone', 'frone', 'slone', 'smone']
+    t.create_tsne_series(anchors=anchors, probes=probes)

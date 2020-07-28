@@ -5,8 +5,9 @@ checkpoints/*
 # RESULTS
 # only include series simulations
 results/*-*-*
-# No running time plots
+# No running time plots or csv files
 results/*/*/Running Time *.png
+results/*/*/*.csv.gz
 # Only plots at epoch 350 and 750, but no bar plots
 results/*/*/*/*.png
 !results/*/*/*/*350.png

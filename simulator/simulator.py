@@ -4,7 +4,7 @@ simulator.py
 === SUMMARY ===
 Description     : Code for running simulation for training model and saving results
 Date Created    : May 03, 2020
-Last Updated    : July 26, 2020
+Last Updated    : July 27, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -22,6 +22,8 @@ Last Updated    : July 26, 2020
     - anchors are now placed in one single csv file, and anchor sets are chosen in simulator_config.cfg
 
 === UPDATE NOTES ===
+ > July 27, 2020
+    - save hidden layer and output layer data starting from epoch 0
  > July 26, 2020
     - implement "generalized" cross entropy loss
     - add series folder
@@ -218,7 +220,7 @@ class Simulator:
                 'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch >= self.config.Training.anchor_epoch and epoch % self.config.Training.plot_freq == 0:
+            if epoch % self.config.Training.plot_freq == 0:
                 hl_activation_data.add_rows([epoch] * hl_activations.shape[0], {
                     'orth': data['orth'],
                     'category': data['type'],
