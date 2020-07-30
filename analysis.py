@@ -44,7 +44,7 @@ if __name__ == "__main__":
         quit()
 
     if args.analysis_type in ['density_plots', 'dp']:
-        # dp = DensityPlots(folder=f"results/{args.results_dir}", anchor=True, probe=True)
-        dp = DensityPlots(folder=f"results/{args.results_dir}", plaut=True)
-        dp.create_hl_plots()
-        # dp.create_ol_plots()
+        dp = DensityPlots(folder=f"results/{args.results_dir}")
+        dp.create_hl_activation_plots(plaut=True)
+        dp.create_hl_activation_plots(anchor=True, probe=True)
+        dp.create_ol_activation_plots(anchor=True, probe=True)

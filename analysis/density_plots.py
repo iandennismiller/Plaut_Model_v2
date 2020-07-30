@@ -25,41 +25,67 @@ pd.set_option('mode.chained_assignment', None)
 
 
 class DensityPlots:
-    def __init__(self, folder, plaut=False, anchor=False, probe=False):
+    def __init__(self, folder):
+        self.logger = logging.getLogger('__main__.' + __name__)
         self.results_dir = folder
         self.label = folder.split('/')[-1]
-        self.categories = []
+
+        # CREATE FOLDER FOR DENSITY PLOTS IF NOT ALREADY CREATED
+        self.dp_folder = f"{self.results_dir}/density_plots"
+        if not os.path.isdir(self.dp_folder):
+            self.dp_folder = create_analysis_folder(self.results_dir, 'density_plots')
+
+        self.logger.info(f"Density plots will be stored in {self.dp_folder}")
+
+    @staticmethod
+    def get_categories(plaut, anchor, probe):
+        categories = []
         if plaut:
-            self.categories += WordTypes.plaut_types
+            categories += WordTypes.plaut_types
         if anchor:
-            self.categories += WordTypes.anchor_types
+            categories += WordTypes.anchor_types
         if probe:
-            self.categories += WordTypes.probe_types
+            categories += WordTypes.probe_types
+        return categories
 
-        self.output_dir = create_analysis_folder(self.results_dir, 'density_plots')
-        self.logger = logging.getLogger('__main__.' + __name__)
-        self.logger.info(f'Categories: {self.categories}')
+    @staticmethod
+    def get_folder_name(plaut, anchor, probe):
+        name = ""
+        if plaut:
+            name += "_plaut"
+        if anchor:
+            name += "_anchor"
+        if probe:
+            name += "_probe"
+        return name
 
-    def create_hl_plots(self):
+    def create_hl_activation_plots(self, plaut=False, anchor=False, probe=False):
         # CHECK WHETHER DATA FILE EXISTS
         filepath = f'{self.results_dir}/warping-dilution-{self.label}-Hidden Layer.csv.gz'
         if not os.path.isfile(filepath):
             self.logger.error('No data found for hidden layer activations in given folder')
             return None
 
+        categories = self.get_categories(plaut, anchor, probe)
+        folder_name = 'hidden_activations' + self.get_folder_name(plaut, anchor, probe)
+
+        # CREATE FOLDER FOR OUTPUTS
+        output_dir = create_analysis_folder(self.dp_folder, folder_name)
+
         # LOAD DATA
         self.logger.info('Loading hidden layer activation data')
         df = pd.read_csv(filepath, converters={'activation': eval})
-        df = df[df['category'].isin(self.categories)]
+        df = df[df['category'].isin(categories)]
 
         # CREATE DENSITY PLOTS
-        ymin, ymax = None, None
+        y_min, y_max = None, None
         t = tqdm(sorted(df['epoch'].unique(), reverse=True))
+
         for epoch in t:
             t.set_description(f"[Hidden Layer Activation - Epoch {epoch:3d}]")
             epoch_df = df[df['epoch'] == epoch]
-            fig = plt.figure()
-            for cat in self.categories:
+            plt.figure()
+            for cat in categories:
                 if cat in WordTypes.anchor_types:
                     label = WordTypes.anchor_mapping[cat]
                 elif cat in WordTypes.probe_types:
@@ -71,29 +97,35 @@ class DensityPlots:
                 data = activation_data.to_numpy().reshape(-1)
                 sns.distplot(data, hist=None, kde_kws={'bw': 0.025, 'gridsize': 150}, label=label)
 
-            if ymin is None:
-                xmin, xmax, ymin, ymax = plt.axis()
+            if y_min is None:
+                _, _, y_min, y_max = plt.axis()
             else:
-                plt.ylim(ymin, ymax)
+                plt.ylim(y_min, y_max)
 
             plt.title(f'Hidden Layer Activations - Epoch {epoch}')
             plt.legend()
-            plt.savefig(f'{self.output_dir}/hidden_layer_activations_{epoch}', dpi=300)
+            plt.savefig(f'{output_dir}/{folder_name}_{epoch}', dpi=300)
             plt.close()
 
         self.logger.info("Completed all required density plots for hidden layer activations")
 
-    def create_ol_plots(self):
+    def create_ol_activation_plots(self, plaut=False, anchor=False, probe=None):
         # CHECK WHETHER DATA FILE EXISTS
         filepath = f'{self.results_dir}/warping-dilution-{self.label}-Output Layer.csv.gz'
         if not os.path.isfile(filepath):
             logging.error('No data found for output layer activations in given folder')
             return None
 
+        categories = self.get_categories(plaut, anchor, probe)
+        folder_name = 'output_activations' + self.get_folder_name(plaut, anchor, probe)
+
+        # CREATE FOLDER FOR OUTPUTS
+        output_dir = create_analysis_folder(self.dp_folder, folder_name)
+
         # LOAD DATA
         self.logger.info('Loading output layer activation data')
         df = pd.read_csv(filepath, converters={'activation': eval})
-        df = df[df['category'].isin(self.categories)]
+        df = df[df['category'].isin(categories)]
 
         num_onset = len(VectorMapping.phoneme_onset)
         num_vowel = len(VectorMapping.phoneme_vowel)
@@ -106,7 +138,7 @@ class DensityPlots:
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 5), sharex='all', sharey='all')
 
             labels = []
-            for cat in self.categories:
+            for cat in categories:
                 if cat in WordTypes.anchor_types:
                     label = WordTypes.anchor_mapping[cat]
                 elif cat in WordTypes.probe_types:
@@ -132,7 +164,7 @@ class DensityPlots:
             ax3.legend(bbox_to_anchor=(1.05, 0.5), loc='center left')
             plt.xlim(-0.1, 1.1)
             plt.ylim(0, 1.5)
-            plt.savefig(f'{self.output_dir}/output_layer_activations_{epoch}', dpi=300)
+            plt.savefig(f'{output_dir}/{folder_name}_{epoch}', dpi=300)
             plt.close()
 
         self.logger.info("Completed all required density plots for output layer activations")
