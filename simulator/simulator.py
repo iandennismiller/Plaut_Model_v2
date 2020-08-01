@@ -65,10 +65,10 @@ Last Updated    : July 27, 2020
 
 import logging
 import time
+from tqdm import tqdm
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 from config.simulator_config import Config
@@ -173,12 +173,17 @@ class Simulator:
                             labels=("Epoch", "Time (s)"))
         hl_activation_data = Results(results_dir=self.config.General.rootdir,
                                      config=self.config,
-                                     title="Hidden Layer",
+                                     title="Hidden Layer Activations",
                                      categories=['orth', 'category', 'activation'])
         ol_activation_data = Results(results_dir=self.config.General.rootdir,
                                      config=self.config,
-                                     title="Output Layer",
+                                     title="Output Layer Activations",
                                      categories=['orth', 'category', 'activation'])
+
+        model_weights = Results(results_dir=self.config.General.rootdir,
+                                config=self.config,
+                                title="Model Weights",
+                                categories=['weights'])
 
         start_epoch = 1
 
@@ -189,10 +194,11 @@ class Simulator:
             start_epoch, optimizer = self.load_checkpoint()
 
         optimizer = None
+        t = tqdm(range(start_epoch, self.config.Training.total_epochs+1), smoothing=0.15)
 
         """ TRAINING LOOP """
-        for epoch in range(start_epoch, self.config.Training.total_epochs + 1):
-            epoch_time = time.time()
+        for epoch in t:
+            _epoch_time = time.time()
             epoch_loss = 0
 
             # change optimizer if needed
@@ -221,16 +227,7 @@ class Simulator:
 
             # save hidden and output layer data
             if epoch % self.config.Training.plot_freq == 0:
-                hl_activation_data.add_rows([epoch] * hl_activations.shape[0], {
-                    'orth': data['orth'],
-                    'category': data['type'],
-                    'activation': hl_activations.tolist()
-                })
-                ol_activation_data.add_rows([epoch] * ol_activations.shape[0], {
-                    'orth': data['orth'],
-                    'category': data['type'],
-                    'activation': ol_activations.tolist()
-                })
+                self.save_data(data, epoch, hl_activation_data, hl_activations, ol_activation_data, ol_activations)
 
             """ ANCHOR DATASET """
             data = self.anchor_ds[:]  # load data
@@ -257,16 +254,7 @@ class Simulator:
 
             # save hidden and output layer data
             if epoch >= self.config.Training.anchor_epoch and epoch % (self.config.Training.plot_freq / 10) == 0:
-                hl_activation_data.add_rows([epoch] * hl_activations.shape[0], {
-                    'orth': data['orth'],
-                    'category': data['type'],
-                    'activation': hl_activations.tolist()
-                })
-                ol_activation_data.add_rows([epoch] * ol_activations.shape[0], {
-                    'orth': data['orth'],
-                    'category': data['type'],
-                    'activation': ol_activations.tolist()
-                })
+                self.save_data(data, epoch, hl_activation_data, hl_activations, ol_activation_data, ol_activations)
 
             """ PROBE DATASET """
             data = self.probe_ds[:]
@@ -288,16 +276,7 @@ class Simulator:
 
             # save hidden and output layer data
             if epoch >= self.config.Training.anchor_epoch and epoch % (self.config.Training.plot_freq / 10) == 0:
-                hl_activation_data.add_rows([epoch] * hl_activations.shape[0], {
-                    'orth': data['orth'],
-                    'category': data['type'],
-                    'activation': hl_activations.tolist()
-                })
-                ol_activation_data.add_rows([epoch] * ol_activations.shape[0], {
-                    'orth': data['orth'],
-                    'category': data['type'],
-                    'activation': ol_activations.tolist()
-                })
+                self.save_data(data, epoch, hl_activation_data, hl_activations, ol_activation_data, ol_activations)
 
             """ UPDATE PARAMETERS, PLOT, SAVE """
             # calculate gradients and update weights
@@ -315,17 +294,18 @@ class Simulator:
                 anchor_accuracy.line_plot(mapping=WordTypes.anchor_mapping)
                 probe_accuracy.line_plot(mapping=WordTypes.probe_mapping)
 
-            # print statistics
-            epoch_time = time.time() - epoch_time
-            time_data.append_row(epoch, epoch_time)
-            if epoch % (self.config.Training.print_freq*10) == 0:
-                self.logger.info(f" [Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {epoch_time:.4f}")
-            else:
-                self.logger.debug(f"[Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {epoch_time:.4f}")
+            # save model weights
+            model_weights.append_row(epoch, self.model.state_dict())
 
             # save checkpoint
             if epoch in self.config.Checkpoint.cp_epochs:
                 self.save_checkpoint(epoch, optimizer)
+
+            # calculate epoch time
+            _epoch_time = time.time() - _epoch_time
+            time_data.append_row(epoch, _epoch_time)
+
+            t.set_description(f"[Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {_epoch_time:.4f} |\tProgress")
 
         """ SAVE RESULTS, PLOT, AND FINISH """
         # save output data
@@ -355,16 +335,30 @@ class Simulator:
 
         # save data as .csv.gz files and produce final plots
         output_data.save_data(index_label='epoch')
-        self.logger.info('Output data saved successfully')
         hl_activation_data.save_data(index_label='epoch')
-        self.logger.info('Hidden layer activations saved successfully')
         ol_activation_data.save_data(index_label='epoch')
-        self.logger.info('Output layer activations saved successfully')
+        model_weights.save_data(index_label='epoch', save_type='pickle')
+
+        # produce final plots
         time_data.line_plot()
         plaut_accuracy.bar_plot()
         anchor_accuracy.bar_plot()
         probe_accuracy.bar_plot()
+
         self.logger.info('Simulation completed.')
+
+    @staticmethod
+    def save_data(data, epoch, hl_activation_data, hl_activations, ol_activation_data, ol_activations):
+        hl_activation_data.add_rows([epoch] * hl_activations.shape[0], {
+            'orth': data['orth'],
+            'category': data['type'],
+            'activation': hl_activations.tolist()
+        })
+        ol_activation_data.add_rows([epoch] * ol_activations.shape[0], {
+            'orth': data['orth'],
+            'category': data['type'],
+            'activation': ol_activations.tolist()
+        })
 
     def set_optimizer(self, i):
         """
@@ -415,7 +409,7 @@ class Simulator:
         # forward pass
         hl_outputs, outputs = self.model(inputs)
         # clip outputs to prevent division by zero in loss calculation
-        outputs = torch.min(outputs, torch.full(outputs.shape, 1-self.config.Training.target_radius))
+        outputs_clipped = torch.min(outputs, torch.full(outputs.shape, 1-self.config.Training.target_radius))
 
         # target radius
         if self.config.Training.target_radius > 0:
@@ -423,10 +417,10 @@ class Simulator:
             target_zero_indices = torch.where(targets == 0)
             target_upper_thresh = torch.full(targets.shape, 1 - self.config.Training.target_radius)
             target_lower_thresh = torch.full(targets.shape, self.config.Training.target_radius)
-            targets[target_one_indices] = torch.max(target_upper_thresh, outputs.detach())[target_one_indices]
-            targets[target_zero_indices] = torch.min(target_lower_thresh, outputs.detach())[target_zero_indices]
+            targets[target_one_indices] = torch.max(target_upper_thresh, outputs_clipped.detach())[target_one_indices]
+            targets[target_zero_indices] = torch.min(target_lower_thresh, outputs_clipped.detach())[target_zero_indices]
 
-        loss = self.criterion(outputs, targets)
+        loss = self.criterion(outputs_clipped, targets)
 
         # find weighted sum of loss
         loss = loss * log_freq
