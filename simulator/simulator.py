@@ -180,6 +180,11 @@ class Simulator:
                                      title="Output Layer Activations",
                                      categories=['orth', 'category', 'activation'])
 
+        model_weights = Results(results_dir=self.config.General.rootdir,
+                                config=self.config,
+                                title="Model Weights",
+                                categories=['weights'])
+
         start_epoch = 1
 
         """
@@ -289,15 +294,18 @@ class Simulator:
                 anchor_accuracy.line_plot(mapping=WordTypes.anchor_mapping)
                 probe_accuracy.line_plot(mapping=WordTypes.probe_mapping)
 
-            # print statistics
-            _epoch_time = time.time() - _epoch_time
-            time_data.append_row(epoch, _epoch_time)
-
-            t.set_description(f"[Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {_epoch_time:.4f} |\tProgress")
+            # save model weights
+            model_weights.append_row(epoch, self.model.state_dict())
 
             # save checkpoint
             if epoch in self.config.Checkpoint.cp_epochs:
                 self.save_checkpoint(epoch, optimizer)
+
+            # calculate epoch time
+            _epoch_time = time.time() - _epoch_time
+            time_data.append_row(epoch, _epoch_time)
+
+            t.set_description(f"[Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {_epoch_time:.4f} |\tProgress")
 
         """ SAVE RESULTS, PLOT, AND FINISH """
         # save output data
@@ -329,6 +337,7 @@ class Simulator:
         output_data.save_data(index_label='epoch')
         hl_activation_data.save_data(index_label='epoch')
         ol_activation_data.save_data(index_label='epoch')
+        model_weights.save_data(index_label='epoch', save_type='pickle')
 
         # produce final plots
         time_data.line_plot()

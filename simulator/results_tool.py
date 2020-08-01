@@ -220,7 +220,7 @@ class Results:
         plt.savefig(f"{self.results_dir}/{self.title} Bar {max(self.index):03d}.png", dpi=200)
         plt.close()
 
-    def save_data(self, index_label="epoch"):
+    def save_data(self, index_label="epoch", save_type='csv'):
         """
         Saves results as compressed csv file
 
@@ -229,7 +229,11 @@ class Results:
         """
 
         df = pd.DataFrame(data=self.values, index=self.index)  # create pandas dataframe
-        df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.csv.gz",
-                  index_label=index_label)  # save as compressed csv
+        if save_type == 'csv':
+            df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.csv.gz",
+                      index_label=index_label)  # save as compressed csv
+            self.logger.info(f'{self.title} saved successfully as compressed csv')
+        elif save_type == 'pickle':
 
-        self.logger.info(f'{self.title} saved successfully')
+            df.to_pickle(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.pkl")
+            self.logger.info(f'{self.title} saved successfully as pickle')
