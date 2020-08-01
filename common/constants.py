@@ -1,3 +1,19 @@
+"""
+constants.py
+
+=== SUMMARY ===
+Description     : Load information from config file
+Date Created    : July 19, 2020
+Last Updated    : July 29, 2020
+
+=== UPDATE NOTES ===
+ > July 29, 2020
+    - file documentation added
+ > July 19, 2020
+    - file created
+"""
+
+
 class VectorMapping:
     grapheme_onset = ['Y', 'S', 'P', 'T', 'K', 'Q', 'C', 'B', 'D', 'G', 'F', 'V', 'J', 'Z', 'L', 'M', 'N', 'R', 'W',
                       'H', 'CH', 'GH', 'GN', 'PH', 'PS', 'RH', 'SH', 'TH', 'TS', 'WH']

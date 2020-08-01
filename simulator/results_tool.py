@@ -46,6 +46,7 @@ Last Updated    : July 26, 2020
 """
 
 import pandas as pd
+import logging
 from matplotlib import pyplot as plt
 
 
@@ -77,6 +78,7 @@ class Results:
         for key in categories:
             self.values[key] = []
         self.shape = (0, len(categories))
+        self.logger = logging.getLogger('__main__.' + __name__)
 
     def __len__(self):
         """
@@ -229,3 +231,5 @@ class Results:
         df = pd.DataFrame(data=self.values, index=self.index)  # create pandas dataframe
         df.to_csv(f"{self.results_dir}/warping-dilution-{self.sim_label}-{self.title}.csv.gz",
                   index_label=index_label)  # save as compressed csv
+
+        self.logger.info(f'{self.title} saved successfully')
