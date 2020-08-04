@@ -30,6 +30,7 @@ import argparse
 import configparser
 import logging
 import sys
+import yaml
 from simulator.simulator import Simulator
 
 parser = argparse.ArgumentParser(description='This script will run a series of \
@@ -43,18 +44,18 @@ parser.add_argument('-seed', '-s', nargs='+', type=int, default=[], help='the ra
 
 
 def write_config_file(anchor, random_seed):
-    config = configparser.ConfigParser()
-    config.read('config/simulator_config.cfg')
+    with open('config/simulator_config.yaml') as file:
+        config = yaml.load(file, Loader=yaml.FullLoader)
 
-    config['dataset']['anchor_sets'] = str(anchor).strip('[]')
-    config['general']['random_seed'] = str(random_seed)
+        config['dataset']['anchor_sets'] = anchor
+        config['general']['random_seed'] = random_seed
 
-    with open('config/simulator_config.cfg', 'w') as configfile:
-        config.write(configfile)
+    with open('config/simulator_config.yaml', 'w') as file:
+        yaml.dump(config, file, sort_keys=False)
 
 
 def run_simulation(series=False):
-    sim = Simulator("config/simulator_config.cfg", series=series)
+    sim = Simulator("config/simulator_config.yaml", series=series)
     sim.train()
 
 
