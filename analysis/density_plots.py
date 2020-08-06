@@ -4,31 +4,38 @@ density_plots.py
 === SUMMARY ===
 Description     : Density plots for hidden layer activations
 Date Created    : June 27, 2020
-Last Updated    : July 27, 2020
+Last Updated    : August 5, 2020
 
 === UPDATE NOTES ===
+ > August 5, 2020
+    - function added for output layer inputs
+ > July 31, 2020
+    - add function for combining images into video
  > July 27, 2020
     - update functions, and put into class
  > June 27, 2020
     - file created
 """
 
+import numpy as np
 import pandas as pd
 import logging
+import pickle
 from matplotlib import pyplot as plt
 import seaborn as sns
 from common.constants import WordTypes, VectorMapping
 from common.helpers import *
 from tqdm import tqdm
+import cv2
 
 pd.set_option('mode.chained_assignment', None)
 
 
 class DensityPlots:
-    def __init__(self, folder):
+    def __init__(self, results_folder):
         self.logger = logging.getLogger('__main__.' + __name__)
-        self.results_dir = folder
-        self.label = folder.split('/')[-1]
+        self.results_dir = results_folder
+        self.label = results_folder.split('/')[-1]
 
         # CREATE FOLDER FOR DENSITY PLOTS IF NOT ALREADY CREATED
         self.dp_folder = f"{self.results_dir}/density_plots"
@@ -61,7 +68,7 @@ class DensityPlots:
 
     def create_hl_activation_plots(self, plaut=False, anchor=False, probe=False):
         # CHECK WHETHER DATA FILE EXISTS
-        filepath = f'{self.results_dir}/warping-dilution-{self.label}-Hidden Layer.csv.gz'
+        filepath = f'{self.results_dir}/warping-dilution-{self.label}-Hidden Layer Activations.csv.gz'
         if not os.path.isfile(filepath):
             self.logger.error('No data found for hidden layer activations in given folder')
             return None
@@ -86,12 +93,7 @@ class DensityPlots:
             epoch_df = df[df['epoch'] == epoch]
             plt.figure()
             for cat in categories:
-                if cat in WordTypes.anchor_types:
-                    label = WordTypes.anchor_mapping[cat]
-                elif cat in WordTypes.probe_types:
-                    label = WordTypes.probe_mapping[cat]
-                else:
-                    label = cat
+                label = self.get_category_label(cat)
 
                 activation_data = epoch_df[epoch_df['category'] == cat]['activation'].apply(pd.Series)
                 data = activation_data.to_numpy().reshape(-1)
@@ -107,11 +109,12 @@ class DensityPlots:
             plt.savefig(f'{output_dir}/{folder_name}_{epoch}', dpi=300)
             plt.close()
 
+        self.combine_plots_as_video(output_dir, folder_name)
         self.logger.info("Completed all required density plots for hidden layer activations")
 
-    def create_ol_activation_plots(self, plaut=False, anchor=False, probe=None):
+    def create_ol_activation_plots(self, plaut=False, anchor=False, probe=False):
         # CHECK WHETHER DATA FILE EXISTS
-        filepath = f'{self.results_dir}/warping-dilution-{self.label}-Output Layer.csv.gz'
+        filepath = f'{self.results_dir}/warping-dilution-{self.label}-Output Layer Activations.csv.gz'
         if not os.path.isfile(filepath):
             logging.error('No data found for output layer activations in given folder')
             return None
@@ -139,12 +142,7 @@ class DensityPlots:
 
             labels = []
             for cat in categories:
-                if cat in WordTypes.anchor_types:
-                    label = WordTypes.anchor_mapping[cat]
-                elif cat in WordTypes.probe_types:
-                    label = WordTypes.probe_mapping[cat]
-                else:
-                    label = cat
+                label = self.get_category_label(cat)
                 labels.append(label)
 
                 activation_data = epoch_df[epoch_df['category'] == cat]['activation'].apply(pd.Series)
@@ -167,4 +165,108 @@ class DensityPlots:
             plt.savefig(f'{output_dir}/{folder_name}_{epoch}', dpi=300)
             plt.close()
 
+        self.combine_plots_as_video(output_dir, folder_name)
         self.logger.info("Completed all required density plots for output layer activations")
+
+    def create_ol_input_plots(self, plaut=False, anchor=True, probe=False):
+        hl_activations_filepath = f'{self.results_dir}/warping-dilution-{self.label}-Hidden Layer Activations.csv.gz'
+        ol_activations_filepath = f'{self.results_dir}/warping-dilution-{self.label}-Output Layer Activations.csv.gz'
+        weights_filepath = f'{self.results_dir}/warping-dilution-{self.label}-Model Weights.pkl'
+        # CHECK WHETHER FILES EXIST
+        if not os.path.isfile(hl_activations_filepath):
+            self.logger.error('No data found for hidden layer activations in given folder')
+            return None
+        if not os.path.isfile(ol_activations_filepath):
+            self.logger.error('No data found for output layer activations in given folder')
+            return None
+        if not os.path.isfile(weights_filepath):
+            self.logger.error('No data found for weights in given folder')
+            return None
+
+        categories = self.get_categories(plaut, anchor, probe)
+        folder_name = 'output_layer_inputs' + self.get_folder_name(plaut, anchor, probe)
+
+        # CREATE FOLDER FOR OUTPUTS
+        output_dir = create_analysis_folder(self.dp_folder, folder_name)
+
+        # LOAD DATA
+        self.logger.info('Loading hidden layer activation data')
+        hl_df = pd.read_csv(hl_activations_filepath, converters={'activation': eval})
+        hl_df = hl_df[hl_df['category'].isin(categories)]
+        self.logger.info('Loading output layer activation data')
+        ol_df = pd.read_csv(ol_activations_filepath, converters={'activation': eval})
+        ol_df = ol_df[ol_df['category'].isin(categories)]
+        self.logger.info('Loading weights')
+        weights_df = pd.read_pickle(weights_filepath)
+
+        activations = pd.merge(hl_df, ol_df, on=['epoch', 'orth', 'category'], suffixes=['_hl', '_ol'])
+
+        t1 = tqdm(activations['orth'].unique(), leave=False)
+
+        for word in t1:
+            temp = activations[activations['orth'] == word].sort_values(by='epoch').reset_index(drop=True)
+
+            num_onsets = len(VectorMapping.phoneme_onset)
+            num_vowels = len(VectorMapping.phoneme_vowel)
+            start_vowel = np.argmax(temp.iloc[0]['activation_ol'][num_onsets:(num_onsets+num_vowels)]) + num_onsets
+            end_vowel = np.argmax(temp.iloc[-1]['activation_ol'][num_onsets:(num_onsets+num_vowels)]) + num_onsets
+
+            for i, row in temp.iterrows():
+                epoch = row['epoch']
+                category = row['category']
+
+                fig, ax = plt.subplots()
+                start_inputs = np.multiply(row['activation_hl'],
+                                           weights_df.loc[epoch, 'weights']['layer2.weight'][start_vowel, :])
+                sns.distplot(start_inputs, hist=None,kde_kws={'bw': 0.05, 'gridsize': 150},
+                             label=f'regularized: {VectorMapping.phoneme_vowel[start_vowel-num_onsets]}')
+                if start_vowel != end_vowel:
+                    end_inputs = np.multiply(row['activation_hl'],
+                                             weights_df.loc[epoch, 'weights']['layer2.weight'][end_vowel, :])
+                    sns.distplot(end_inputs, hist=None, kde_kws={'bw': 0.05, 'gridsize': 150},
+                                 label=f'training consistent: {VectorMapping.phoneme_vowel[end_vowel-num_onsets]}')
+                    plt.legend()
+
+                plt.title(f'Output Layer Inputs - Epoch {epoch}')
+                plt.xlabel(f'Word: {word} | Category: {WordTypes.anchor_mapping[category][:-1]}')
+                plt.savefig(f'{output_dir}/{folder_name}_{word}_{epoch}.png', dpi=300)
+                plt.close()
+
+            self.combine_plots_as_video(output_dir, folder_name, suffix=word)
+            for f in os.listdir(output_dir):
+                if f.endswith(".png"):
+                    os.remove(os.path.join(output_dir, f))
+
+        self.logger.info("Completed density plots for output layer inputs")
+
+    @staticmethod
+    def combine_plots_as_video(output_dir, name, suffix="", fps=2):
+        # FIND AND SORT IMAGE FILEPATHS
+        images = []
+        for f in os.listdir(output_dir):
+            if f.endswith('.png'):
+                images.append(f)
+        images = sorted(images, key=lambda x: int(x.split('_')[-1][:-4]))
+
+        # LOAD IMAGES
+        frame_array = []
+        width, height = 0, 0
+        for i in images:
+            img = cv2.imread(os.path.join(output_dir, i))
+            height, width, layers = img.shape
+            frame_array.append(img)
+
+        # WRITE TO VIDEO
+        out = cv2.VideoWriter(f'{output_dir}/{name}_{suffix}.mp4', cv2.VideoWriter_fourcc(*'avc1'), fps, (width, height))
+        for i in frame_array:
+            out.write(i)
+        out.release()
+
+    @staticmethod
+    def get_category_label(cat):
+        if cat in WordTypes.anchor_types:
+            return WordTypes.anchor_mapping[cat]
+        elif cat in WordTypes.probe_types:
+            return WordTypes.probe_mapping[cat]
+        else:
+            return cat

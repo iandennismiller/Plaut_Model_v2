@@ -4,13 +4,15 @@ plaut_model.py
 === SUMMARY ===
 Description     : Code for running a series of simulations
 Date Created    : May 03, 2020
-Last Updated    : July 26, 2020
+Last Updated    : August 5, 2020
 
 === DETAILED DESCRIPTION ===
- > Given the parameters simulator_config.cfg file, this script will run a series of
+ > Given the parameters simulator_config.yaml file, this script will run a series of
    tests with combinations of anchor sets and random seeds
 
 === UPDATE NOTES ===
+ > August 5, 2020
+    - edit file description based on changed config file
  > July 26, 2020
     - add series folder
  > July 18, 2020
