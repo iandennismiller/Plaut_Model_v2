@@ -1,6 +1,6 @@
 # Results
 
-### BASE2-20200726
+### BASE-20200731
 > * **Description**: Change loss function to generalized cross entropy loss
 > * **Note**: GCE loss will be used for all future simulations unless noted otherwise
 
