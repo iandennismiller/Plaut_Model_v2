@@ -190,7 +190,7 @@ class Simulator:
         """
         LOAD CHECKPOINT
         """
-        if self.config.Checkpoint.checkpoint_file != "":
+        if self.config.Checkpoint.filepath:
             start_epoch, optimizer = self.load_checkpoint()
 
         optimizer = None
@@ -226,8 +226,10 @@ class Simulator:
                 'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch % self.config.Training.plot_freq == 0:
-                self.save_data(data, epoch, hl_activation_data, hl_activations, ol_activation_data, ol_activations)
+            if epoch % self.config.Outputs.hidden_activations['plaut'] == 0:
+                self.save_activation_data(data, epoch, hl_activation_data, hl_activations)
+            if epoch % self.config.Outputs.output_activations['plaut'] == 0:
+                self.save_activation_data(data, epoch, ol_activation_data, ol_activations)
 
             """ ANCHOR DATASET """
             data = self.anchor_ds[:]  # load data
@@ -253,8 +255,11 @@ class Simulator:
                 'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch >= self.config.Training.anchor_epoch and epoch % (self.config.Training.plot_freq / 10) == 0:
-                self.save_data(data, epoch, hl_activation_data, hl_activations, ol_activation_data, ol_activations)
+            if epoch >= self.config.Training.anchor_epoch:
+                if epoch % self.config.Outputs.hidden_activations['anchor'] == 0:
+                    self.save_activation_data(data, epoch, hl_activation_data, hl_activations)
+                if epoch % self.config.Outputs.output_activations['anchor'] == 0:
+                    self.save_activation_data(data, epoch, ol_activation_data, ol_activations)
 
             """ PROBE DATASET """
             data = self.probe_ds[:]
@@ -275,8 +280,11 @@ class Simulator:
                 'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch >= self.config.Training.anchor_epoch and epoch % (self.config.Training.plot_freq / 10) == 0:
-                self.save_data(data, epoch, hl_activation_data, hl_activations, ol_activation_data, ol_activations)
+            if epoch >= self.config.Training.anchor_epoch:
+                if epoch % self.config.Outputs.hidden_activations['probe'] == 0:
+                    self.save_activation_data(data, epoch, hl_activation_data, hl_activations)
+                if epoch % self.config.Outputs.output_activations['probe'] == 0:
+                    self.save_activation_data(data, epoch, ol_activation_data, ol_activations)
 
             """ UPDATE PARAMETERS, PLOT, SAVE """
             # calculate gradients and update weights
@@ -288,17 +296,20 @@ class Simulator:
             training_loss.append_row(epoch, epoch_loss.item())
 
             # plot results
-            if epoch % self.config.Training.plot_freq == 0:
+            if epoch % self.config.Outputs.plotting['loss'] == 0:
                 training_loss.line_plot()
+            if epoch % self.config.Outputs.plotting['plaut_acc'] == 0:
                 plaut_accuracy.line_plot()
+            if epoch % self.config.Outputs.plotting['anchor_acc'] == 0:
                 anchor_accuracy.line_plot(mapping=WordTypes.anchor_mapping)
+            if epoch % self.config.Outputs.plotting['probe_acc'] == 0:
                 probe_accuracy.line_plot(mapping=WordTypes.probe_mapping)
 
             # save model weights
             model_weights.append_row(epoch, self.model.state_dict())
 
             # save checkpoint
-            if epoch in self.config.Checkpoint.cp_epochs:
+            if epoch in self.config.Checkpoint.save_epochs:
                 self.save_checkpoint(epoch, optimizer)
 
             # calculate epoch time
@@ -348,16 +359,11 @@ class Simulator:
         self.logger.info('Simulation completed.')
 
     @staticmethod
-    def save_data(data, epoch, hl_activation_data, hl_activations, ol_activation_data, ol_activations):
-        hl_activation_data.add_rows([epoch] * hl_activations.shape[0], {
+    def save_activation_data(data, epoch, activation_data, activations):
+        activation_data.add_rows([epoch] * activations.shape[0], {
             'orth': data['orth'],
             'category': data['type'],
-            'activation': hl_activations.tolist()
-        })
-        ol_activation_data.add_rows([epoch] * ol_activations.shape[0], {
-            'orth': data['orth'],
-            'category': data['type'],
-            'activation': ol_activations.tolist()
+            'activation': activations.tolist()
         })
 
     def set_optimizer(self, i):
@@ -459,7 +465,7 @@ class Simulator:
         }, f"checkpoints/{self.config.General.label}_{epoch}.tar")
 
     def load_checkpoint(self):
-        checkpoint = torch.load(self.config.Checkpoint.checkpoint_file)
+        checkpoint = torch.load(self.config.Checkpoint.filepath)
         self.model.load_state_dict(checkpoint['model_state_dict'])
 
         assert {'model_state_dict', 'optimizer_state_dict', 'epoch',

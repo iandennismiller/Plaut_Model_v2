@@ -4,12 +4,14 @@ analysis.py
 === SUMMARY ===
 Description     : Code for running an analysis on results data
 Date Created    : July 28, 2020
-Last Updated    : July 28, 2020
+Last Updated    : August 5, 2020
 
 === DETAILED DESCRIPTION ===
  > TBD
 
 === UPDATE NOTES ===
+ > August 5, 2020
+    - script modified based on changes from density plots
  > July 28, 2020
     - file created
 """
@@ -44,7 +46,8 @@ if __name__ == "__main__":
         quit()
 
     if args.analysis_type in ['density_plots', 'dp']:
-        dp = DensityPlots(folder=f"results/{args.results_dir}")
-        dp.create_hl_activation_plots(plaut=True)
-        dp.create_hl_activation_plots(anchor=True, probe=True)
-        dp.create_ol_activation_plots(anchor=True, probe=True)
+        dp = DensityPlots(results_folder=f"results/{args.results_dir}")
+        dp.create_hl_activation_plots(plaut=True, anchor=False, probe=False)
+        dp.create_hl_activation_plots(plaut=False, anchor=True, probe=True)
+        dp.create_ol_activation_plots(plaut=False, anchor=True, probe=True)
+        dp.create_ol_input_plots(plaut=False, anchor=True, probe=False)

@@ -4,7 +4,7 @@ dataset.py
 === SUMMARY === 
 Description     : Defines class for custom dataset for Plaut Model and functions to generate grapheme/phoneme vectors
 Date Created    : May 03, 2020
-Last Updated    : July 19, 2020
+Last Updated    : August 4, 2020
 
 === DETAILED DESCRIPTION ===
  > Functionality
@@ -14,6 +14,8 @@ Last Updated    : July 19, 2020
    - in plaut_dataset.__getitem__, return {type, orth, phon} as lists instead of pandas Series
 
 === UPDATE NOTES ===
+ > August 4, 2020
+    - move get_grapheme and get_phoneme functions to common/helpers.py
  > July 19, 2020
     - move grapheme and phoneme mapping to constants class
  > July 18, 2020
@@ -22,7 +24,7 @@ Last Updated    : July 19, 2020
     - File created, initial code written
 """
 
-from common.constants import VectorMapping
+from common.helpers import *
 
 import numpy as np
 import pandas as pd
@@ -120,84 +122,3 @@ class PlautDataset(Dataset):
     def get_types(self):
         return set(self.df['type'])
 
-
-def get_graphemes(word):
-    word = str(word).upper()  # convert all text to capitals first
-    if word == "NAN":  # the word null automatically gets imported as "NaN" in dataframe, so fix that
-        word = "NULL"
-
-    grapheme_onset = VectorMapping.grapheme_onset
-    grapheme_vowel = VectorMapping.grapheme_vowel
-    grapheme_codas = VectorMapping.grapheme_codas
-
-    # initialize vectors to zero
-    onset = [0] * len(grapheme_onset)
-    vowel = [0] * len(grapheme_vowel)
-    codas = [0] * len(grapheme_codas)
-
-    # for onset: essentially "turn on" corresponding slots for onsets until a vowel is reached
-    i = 0
-    for i in range(len(word)):
-        if word[i] in grapheme_vowel:  # vowel found, move on
-            if not (i == 0 and word[i] == 'Y'):
-                break
-        if word[i] in grapheme_onset:  # single-letter grapheme found
-            onset[grapheme_onset.index(word[i])] = 1
-        if word[i:i + 2] in grapheme_onset:  # double-letter grapheme found
-            onset[grapheme_onset.index(word[i:i + 2])] = 1
-
-    # for vowels
-    vowel[grapheme_vowel.index(word[i])] = 1
-    if i + 1 < len(word):  # check for double-vowel
-        if word[i + 1] in grapheme_vowel:
-            vowel[grapheme_vowel.index(word[i + 1])] = 1
-        if word[i:i + 2] in grapheme_vowel:
-            vowel[grapheme_vowel.index(word[i:i + 2])] = 1
-        # if double-letter vowel found, increment i one more time
-        if word[i + 1] in grapheme_vowel or word[i:i + 2] in grapheme_vowel:
-            i += 1
-
-    # for codas
-    for j in range(i + 1, len(word)):
-        if word[j] in grapheme_codas:  # check for single-letter coda
-            codas[grapheme_codas.index(word[j])] = 1
-        if word[j:j + 2] in grapheme_codas:  # check for double-letter coda
-            codas[grapheme_codas.index(word[j:j + 2])] = 1
-        if word[j:j + 3] in grapheme_codas:  # check for triple-letter coda
-            codas[grapheme_codas.index(word[j:j + 3])] = 1
-
-    # combine and return
-    return onset + vowel + codas
-
-
-# similar idea to graphemes; refer to above for comments
-def get_phonemes(phon):
-    phoneme_onset = VectorMapping.phoneme_onset
-    phoneme_vowel = VectorMapping.phoneme_vowel
-    phoneme_codas = VectorMapping.phoneme_codas
-
-    phon = phon[1:-1]
-    onset = [0] * len(phoneme_onset)
-    vowel = [0] * len(phoneme_vowel)
-    codas = [0] * len(phoneme_codas)
-
-    i, j, k = 0, 0, 0
-    for i in range(len(phon)):
-        if phon[i] in phoneme_vowel:
-            break
-        if phon[i] in phoneme_onset:
-            onset[phoneme_onset.index(phon[i])] = 1
-
-    for j in range(i, len(phon)):
-        if phon[j] in phoneme_codas:
-            break
-        if phon[j] in phoneme_vowel:
-            vowel[phoneme_vowel.index(phon[j])] = 1
-
-    for k in range(j, len(phon)):
-        if phon[k] in phoneme_codas:
-            codas[phoneme_codas.index(phon[k])] = 1
-        if phon[k:k + 2] in phoneme_codas:
-            codas[phoneme_codas.index(phon[k:k + 2])] = 1
-
-    return onset + vowel + codas

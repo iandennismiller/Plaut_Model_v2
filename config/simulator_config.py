@@ -16,62 +16,59 @@ Last Updated    : July 18, 2020
     - initial file creation
 """
 
-import configparser
+import os
+import yaml
 from datetime import datetime
 
 
 class Config:
-
     def __init__(self, filepath):
-        config = configparser.ConfigParser()
-        config.read(filepath)
+        with open(filepath) as file:
+            config = yaml.load(file, Loader=yaml.FullLoader)
 
         self.Training = Config.Training(config)
         self.Checkpoint = Config.Checkpoint(config)
         self.Dataset = Config.Dataset(config)
+        self.Outputs = Config.Outputs(config)
         self.Optimizer = Config.Optimizer(config)
         self.General = Config.General(config, self.Dataset)
 
-    class General:
-        def __init__(self, config, Dataset):
-            assert config['general']['label'] != '', "ERROR: Label must not be left blank"
-
-            self.random_seed = int(config['general']['random_seed'])
-            self.dilution = len(Dataset.anchor_sets)
-            self.order = 1 if 1 in Dataset.anchor_sets else max(Dataset.anchor_sets)
-            self.date = datetime.today().strftime("%Y%m%d")
-            self.label = f"{config['general']['label']}-S{self.random_seed}D{self.dilution}O{self.order}-{self.date}"
-            self.rootdir = None
-
     class Training:
         def __init__(self, config):
-            self.plot_freq = int(config['training']['plot_freq'])
-            self.print_freq = int(config['training']['print_freq'])
-            self.save_freq = int(config['training']['save_freq'])
-            self.target_radius = float(config['training']['target_radius'])
-            self.total_epochs = int(config['training']['total_epochs'])
             self.anchor_epoch = int(config['training']['anchor_epoch'])
+            self.total_epochs = int(config['training']['total_epochs'])
+            self.target_radius = config['training']['target_radius']
 
-            assert self.plot_freq > 0 and self.print_freq > 0 and self.save_freq > 0, \
-                "ERROR: Plot, Print, Save frequencies must be greater than 0"
-            assert self.total_epochs > 0, "ERROR: Total Epochs must be greater than 0"
+            # ERROR CHECKING
             assert self.anchor_epoch > 0, "ERROR: Anchor Epoch must be greater than 0"
-            assert self.total_epochs >= self.anchor_epoch, \
-                "ERROR: Total Epochs must be greater than or equal to Anchor Epoch"
+            assert self.total_epochs > self.anchor_epoch, "ERROR: Total Epochs must be greater than Anchor Epoch"
             assert 0 <= self.target_radius <= 1, "ERROR: Target Radius must be between 0 and 1"
 
     class Checkpoint:
         def __init__(self, config):
-            self.cp_epochs = [int(x) for x in config['checkpoint']['checkpoint_save_epochs'].split(',') if x != '']
-            self.checkpoint_file = config['checkpoint']['checkpoint_file']
+            self.save_epochs = config['checkpoint']['save_epochs']
+            if not self.save_epochs:
+                self.save_epochs = []
+            self.filepath = config['checkpoint']['filepath']
 
     class Dataset:
         def __init__(self, config):
             self.plaut_filepath = config['dataset']['plaut']
             self.anchor_filepath = config['dataset']['anchor']
             self.probe_filepath = config['dataset']['probe']
-            self.anchor_sets = [int(x) for x in config['dataset']['anchor_sets'].split(',')]
-            self.anchor_base_freq = float(config['dataset']['anc_freq'])
+            self.anchor_sets = config['dataset']['anchor_sets']
+            self.anchor_base_freq = config['dataset']['anchor_freq']
+
+            # ERROR CHECKING
+            for fp in [self.plaut_filepath, self.anchor_filepath, self.probe_filepath]:
+                assert os.path.isfile(fp), f"{fp} does not exist"
+
+    class Outputs:
+        def __init__(self, config):
+            self.plotting = config['outputs']['plotting']
+            self.hidden_activations = config['outputs']['activations']['hidden']
+            self.output_activations = config['outputs']['activations']['output']
+            self.weights = config['outputs']['weights']
 
     class Optimizer:
         def __init__(self, config):
@@ -95,3 +92,18 @@ class Config:
 
             assert set(self.optim_config['optimizer']).issubset({'Adam', 'SGD'}), "ERROR: Only Adam or SGD can be used."
             assert 1 in self.optim_config['start_epoch'], "ERROR: Must specify starting optimizer"
+
+    class General:
+        def __init__(self, config, Dataset):
+            assert config['general']['label'] != '', "ERROR: Label must not be left blank"
+
+            self.random_seed = config['general']['random_seed']
+            self.dilution = len(Dataset.anchor_sets)
+            self.order = 1 if 1 in Dataset.anchor_sets else max(Dataset.anchor_sets)
+            self.date = datetime.today().strftime("%Y%m%d")
+            self.label = f"{config['general']['label']}-S{self.random_seed}D{self.dilution}O{self.order}-{self.date}"
+            self.rootdir = None
+
+
+if __name__ == "__main__":
+    Config('simulator_config.yaml')
