@@ -200,42 +200,79 @@ class DensityPlots:
         weights_df = pd.read_pickle(weights_filepath)
 
         activations = pd.merge(hl_df, ol_df, on=['epoch', 'orth', 'category'], suffixes=['_hl', '_ol'])
+        epochs = activations['epoch'].unique()
+        words = activations['orth'].unique()
 
-        t1 = tqdm(activations['orth'].unique(), leave=False)
+        weight_result = {cat: {e: {'regularized': [], 'training consistent': []} for e in epochs} for cat in categories}
+        bias_result = {cat: {e: {'regularized': [], 'training consistent': []} for e in epochs} for cat in categories}
 
-        for word in t1:
+        for word in tqdm(words, desc='Calculating Weight and Bias Inputs'):
             temp = activations[activations['orth'] == word].sort_values(by='epoch').reset_index(drop=True)
 
             num_onsets = len(VectorMapping.phoneme_onset)
             num_vowels = len(VectorMapping.phoneme_vowel)
-            start_vowel = np.argmax(temp.iloc[0]['activation_ol'][num_onsets:(num_onsets+num_vowels)]) + num_onsets
-            end_vowel = np.argmax(temp.iloc[-1]['activation_ol'][num_onsets:(num_onsets+num_vowels)]) + num_onsets
+            r_vowel = np.argmax(temp.iloc[0]['activation_ol'][num_onsets:(num_onsets+num_vowels)]) + num_onsets
+            tc_vowel = np.argmax(temp.iloc[-1]['activation_ol'][num_onsets:(num_onsets+num_vowels)]) + num_onsets
 
             for i, row in temp.iterrows():
-                epoch = row['epoch']
-                category = row['category']
+                e = row['epoch']
+                cat = row['category']
+                hl_activations = row['activation_hl']
+                layer2_weights = weights_df.loc[e, 'weights']['layer2.weight']
+                layer2_bias = weights_df.loc[e, 'weights']['layer2.bias']
+                print(layer2_weights)
 
-                fig, ax = plt.subplots()
-                start_inputs = np.multiply(row['activation_hl'],
-                                           weights_df.loc[epoch, 'weights']['layer2.weight'][start_vowel, :])
-                sns.distplot(start_inputs, hist=None,kde_kws={'bw': 0.05, 'gridsize': 150},
-                             label=f'regularized: {VectorMapping.phoneme_vowel[start_vowel-num_onsets]}')
-                if start_vowel != end_vowel:
-                    end_inputs = np.multiply(row['activation_hl'],
-                                             weights_df.loc[epoch, 'weights']['layer2.weight'][end_vowel, :])
-                    sns.distplot(end_inputs, hist=None, kde_kws={'bw': 0.05, 'gridsize': 150},
-                                 label=f'training consistent: {VectorMapping.phoneme_vowel[end_vowel-num_onsets]}')
-                    plt.legend()
+                # regularized weight inputs
+                r_weights = np.multiply(hl_activations, layer2_weights[r_vowel, :])
+                weight_result[cat][e]['regularized'].append(r_weights.numpy())
 
-                plt.title(f'Output Layer Inputs - Epoch {epoch}')
-                plt.xlabel(f'Word: {word} | Category: {WordTypes.anchor_mapping[category][:-1]}')
-                plt.savefig(f'{output_dir}/{folder_name}_{word}_{epoch}.png', dpi=300)
-                plt.close()
+                # training consistent weight inputs
+                tc_weights = np.multiply(hl_activations, layer2_weights[tc_vowel, :])
+                weight_result[cat][e]['training consistent'].append(tc_weights.numpy())
 
-            self.combine_plots_as_video(output_dir, folder_name, suffix=word)
-            for f in os.listdir(output_dir):
-                if f.endswith(".png"):
-                    os.remove(os.path.join(output_dir, f))
+                # regularized bias
+                bias_result[cat][e]['regularized'].append(layer2_bias[r_vowel].numpy())
+                bias_result[cat][e]['training consistent'].append(layer2_bias[tc_vowel].numpy())
+
+        for e in tqdm(epochs, desc='Creating Density Plots of Weight Inputs'):
+            fig, axs = plt.subplots(1, len(categories), figsize=(12, 6))
+            for cat, ax in zip(categories, axs):
+                for vowel_type in ['regularized', 'training consistent']:
+                    sns.distplot(np.hstack(weight_result[cat][e][vowel_type]), hist=None,
+                                 kde_kws={'bw': 0.05, 'gridsize': 150}, label=f'{vowel_type.title()} Vowel', ax=ax)
+                ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
+                ax.set_title(self.get_category_label(cat))
+
+            plt.suptitle(f'Output Layer Weight Inputs - Epoch {e}')
+            plt.tight_layout(rect=(0, 0, 1, 0.95))
+            plt.savefig(f'{output_dir}/{folder_name}_weight_{e}.png', dpi=300)
+            plt.close()
+
+        self.logger.info('Merging density plots for weight inputs as video')
+        self.combine_plots_as_video(output_dir, folder_name, suffix='Weight Inputs')
+        for f in os.listdir(output_dir):
+            if f.endswith(".png"):
+                os.remove(os.path.join(output_dir, f))
+
+        for e in tqdm(epochs, desc='Creating Density Plots of Bias Inputs'):
+            fig, axs = plt.subplots(1, len(categories), figsize=(12, 6))
+            for cat, ax in zip(categories, axs):
+                for vowel_type in ['regularized', 'training consistent']:
+                    sns.distplot(np.hstack(bias_result[cat][e][vowel_type]), hist=None,
+                                 kde_kws={'bw': 0.05, 'gridsize': 150}, label=f'{vowel_type.title()} Vowel', ax=ax)
+                ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
+                ax.set_title(self.get_category_label(cat))
+
+            plt.suptitle(f'Output Layer Bias Inputs - Epoch {e}')
+            plt.tight_layout(rect=(0, 0, 1, 0.95))
+            plt.savefig(f'{output_dir}/{folder_name}_bias_{e}.png', dpi=300)
+            plt.close()
+
+        self.logger.info('Merging density plots for weight inputs as video')
+        self.combine_plots_as_video(output_dir, folder_name, suffix='Bias Inputs')
+        for f in os.listdir(output_dir):
+            if f.endswith(".png"):
+                os.remove(os.path.join(output_dir, f))
 
         self.logger.info("Completed density plots for output layer inputs")
 

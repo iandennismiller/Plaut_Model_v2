@@ -308,10 +308,6 @@ class Simulator:
 
             # save model weights
             model_weights.append_row(epoch, copy.deepcopy(self.model.state_dict()))
-            # print(self.model.state_dict()['layer2_bias'][0])
-            # print(model_weights.values)
-            # if epoch == 5:
-            #     raise Exception()
 
             # save checkpoint
             if epoch in self.config.Checkpoint.save_epochs:
