@@ -66,6 +66,7 @@ Last Updated    : July 27, 2020
 import logging
 import time
 from tqdm import tqdm
+import copy
 
 import numpy as np
 import torch
@@ -306,7 +307,7 @@ class Simulator:
                 probe_accuracy.line_plot(mapping=WordTypes.probe_mapping)
 
             # save model weights
-            model_weights.append_row(epoch, self.model.state_dict())
+            model_weights.append_row(epoch, copy.deepcopy(self.model.state_dict()))
 
             # save checkpoint
             if epoch in self.config.Checkpoint.save_epochs:
