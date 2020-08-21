@@ -203,8 +203,12 @@ class DensityPlots:
         epochs = activations['epoch'].unique()
         words = activations['orth'].unique()
 
-        weight_result = {cat: {e: {'regularized': [], 'training consistent': []} for e in epochs} for cat in categories}
-        bias_result = {cat: {e: {'regularized': [], 'training consistent': []} for e in epochs} for cat in categories}
+        weight_result = {'regularized': {e: {cat: [] for cat in categories} for e in epochs},
+                         'training consistent': {e: {cat: [] for cat in categories} for e in epochs}}
+        bias_result = {'regularized': {e: {cat: [] for cat in categories} for e in epochs},
+                       'training consistent': {e: {cat: [] for cat in categories} for e in epochs}}
+        # weight_result = {cat: {e: {'regularized': [], 'training consistent': []} for e in epochs} for cat in categories}
+        # bias_result = {cat: {e: {'regularized': [], 'training consistent': []} for e in epochs} for cat in categories}
 
         for word in tqdm(words, desc='Calculating Weight and Bias Inputs'):
             temp = activations[activations['orth'] == word].sort_values(by='epoch').reset_index(drop=True)
@@ -220,28 +224,33 @@ class DensityPlots:
                 hl_activations = row['activation_hl']
                 layer2_weights = weights_df.loc[e, 'weights']['layer2.weight']
                 layer2_bias = weights_df.loc[e, 'weights']['layer2.bias']
-                print(layer2_weights)
 
                 # regularized weight inputs
                 r_weights = np.multiply(hl_activations, layer2_weights[r_vowel, :])
-                weight_result[cat][e]['regularized'].append(r_weights.numpy())
+                weight_result['regularized'][e][cat].append(r_weights.numpy())
 
                 # training consistent weight inputs
                 tc_weights = np.multiply(hl_activations, layer2_weights[tc_vowel, :])
-                weight_result[cat][e]['training consistent'].append(tc_weights.numpy())
+                weight_result['training consistent'][e][cat].append(tc_weights.numpy())
 
                 # regularized bias
-                bias_result[cat][e]['regularized'].append(layer2_bias[r_vowel].numpy())
-                bias_result[cat][e]['training consistent'].append(layer2_bias[tc_vowel].numpy())
+                bias_result['regularized'][e][cat].append(layer2_bias[r_vowel].numpy())
+                bias_result['training consistent'][e][cat].append(layer2_bias[tc_vowel].numpy())
 
         for e in tqdm(epochs, desc='Creating Density Plots of Weight Inputs'):
-            fig, axs = plt.subplots(1, len(categories), figsize=(12, 6))
-            for cat, ax in zip(categories, axs):
-                for vowel_type in ['regularized', 'training consistent']:
-                    sns.distplot(np.hstack(weight_result[cat][e][vowel_type]), hist=None,
-                                 kde_kws={'bw': 0.05, 'gridsize': 150}, label=f'{vowel_type.title()} Vowel', ax=ax)
+            # fig, axs = plt.subplots(1, len(categories), figsize=(12, 6), sharey=True)
+            fig, axs = plt.subplots(1, 2, figsize=(12, 6), sharey=True)
+            for vowel_type, ax in zip(['regularized', 'training consistent'], axs):
+                for cat in categories:
+                    sns.distplot(np.hstack(weight_result[vowel_type][e][cat]), hist=None,
+                                 kde_kws={'bw': 0.05, 'gridsize': 150}, label=self.get_category_label(cat), ax=ax)
+            # for cat, ax in zip(categories, axs):
+                # for vowel_type in ['regularized', 'training consistent']:
+                #     sns.distplot(np.hstack(weight_result[cat][e][vowel_type]), hist=None,
+                #                  kde_kws={'bw': 0.05, 'gridsize': 150}, label=f'{vowel_type.title()} Vowel', ax=ax)
                 ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
-                ax.set_title(self.get_category_label(cat))
+                ax.set_title(f'{vowel_type.title()} Vowel')
+                # ax.set_title(self.get_category_label(cat))
 
             plt.suptitle(f'Output Layer Weight Inputs - Epoch {e}')
             plt.tight_layout(rect=(0, 0, 1, 0.95))
@@ -255,13 +264,19 @@ class DensityPlots:
                 os.remove(os.path.join(output_dir, f))
 
         for e in tqdm(epochs, desc='Creating Density Plots of Bias Inputs'):
-            fig, axs = plt.subplots(1, len(categories), figsize=(12, 6))
-            for cat, ax in zip(categories, axs):
-                for vowel_type in ['regularized', 'training consistent']:
-                    sns.distplot(np.hstack(bias_result[cat][e][vowel_type]), hist=None,
-                                 kde_kws={'bw': 0.05, 'gridsize': 150}, label=f'{vowel_type.title()} Vowel', ax=ax)
+            # fig, axs = plt.subplots(1, len(categories), figsize=(12, 6), sharey=True)
+            fig, axs = plt.subplots(1, 2, figsize=(12, 6), sharey=True)
+            for vowel_type, ax in zip(['regularized', 'training consistent'], axs):
+                for cat in categories:
+                    sns.distplot(np.hstack(bias_result[vowel_type][e][cat]), hist=None,
+                                 kde_kws={'bw': 0.05, 'gridsize': 150}, label=self.get_category_label(cat), ax=ax)
+            # for cat, ax in zip(categories, axs):
+            #     for vowel_type in ['regularized', 'training consistent']:
+            #         sns.distplot(np.hstack(bias_result[cat][e][vowel_type]), hist=None,
+            #                      kde_kws={'bw': 0.05, 'gridsize': 150}, label=f'{vowel_type.title()} Vowel', ax=ax)
                 ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
-                ax.set_title(self.get_category_label(cat))
+                ax.set_title(f'{vowel_type.title()} Vowel')
+                # ax.set_title(self.get_category_label(cat))
 
             plt.suptitle(f'Output Layer Bias Inputs - Epoch {e}')
             plt.tight_layout(rect=(0, 0, 1, 0.95))
