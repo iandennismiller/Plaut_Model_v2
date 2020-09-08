@@ -22,11 +22,15 @@ import os
 import sys
 
 from analysis.density_plots import DensityPlots
+from analysis.hidden_similarity import HiddenSimilarity
 
 parser = argparse.ArgumentParser(description='This script will run the specified analysis script')
 
 parser.add_argument('analysis_type', type=str)
-parser.add_argument('results_dir', type=str)
+parser.add_argument('-r', '--results_dir', type=str)
+parser.add_argument('-c', '--checkpoint', type=str)
+parser.add_argument('-c2', '--checkpoint2', type=str)
+parser.add_argument('-d', '--dataset', type=str)
 
 if __name__ == "__main__":
     # set up logger
@@ -41,13 +45,16 @@ if __name__ == "__main__":
     # parse and extract arguments
     args = parser.parse_args()
 
-    if not os.path.isdir(f"results/{args.results_dir}"):
-        logger.error(f"Folder results/{args.results_dir} does not exist")
-        quit()
-
     if args.analysis_type in ['density_plots', 'dp']:
+        if not os.path.isdir(f"results/{args.results_dir}"):
+            logger.error(f"Folder results/{args.results_dir} does not exist or is not given")
+            quit()
         dp = DensityPlots(results_folder=f"results/{args.results_dir}")
         dp.create_hl_activation_plots(plaut=True, anchor=False, probe=False)
         dp.create_hl_activation_plots(plaut=False, anchor=True, probe=True)
         dp.create_ol_activation_plots(plaut=False, anchor=True, probe=True)
         dp.create_ol_input_plots(plaut=False, anchor=True, probe=False)
+
+    elif args.analysis_type in ['hidden_similarity', 'hs']:
+        hs = HiddenSimilarity(args.checkpoint, args.checkpoint2)
+        hs.create_plots(args.dataset)
