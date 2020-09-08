@@ -22,6 +22,10 @@ Last Updated    : July 27, 2020
     - anchors are now placed in one single csv file, and anchor sets are chosen in simulator_config.cfg
 
 === UPDATE NOTES ===
+ > September 7, 2020
+    - remove logging for creating checkpoints
+ > August 30, 2020
+    - remove function for loading checkpoints
  > July 27, 2020
     - save hidden layer and output layer data starting from epoch 0
  > July 26, 2020
@@ -187,12 +191,6 @@ class Simulator:
                                 categories=['weights'])
 
         start_epoch = 1
-
-        """
-        LOAD CHECKPOINT
-        """
-        if self.config.Checkpoint.filepath:
-            start_epoch, optimizer = self.load_checkpoint()
 
         optimizer = None
         t = tqdm(range(start_epoch, self.config.Training.total_epochs+1), smoothing=0.15)
@@ -458,27 +456,7 @@ class Simulator:
             (hl_outputs.detach().numpy(), outputs.detach().numpy())
 
     def save_checkpoint(self, epoch, optimizer):
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'optimizer_name': optimizer.__class__.__name__
-        }, f"checkpoints/{self.config.General.label}_{epoch}.tar")
-
-    def load_checkpoint(self):
-        checkpoint = torch.load(self.config.Checkpoint.filepath)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-
-        assert {'model_state_dict', 'optimizer_state_dict', 'epoch',
-                'optimizer_name'}.issubset(set(checkpoint.keys()))
-
-        if checkpoint['optimizer_name'] == 'SGD':
-            optimizer = optim.SGD(self.model.parameters(), lr=0.01)
-        else:
-            optimizer = optim.Adam(self.model.parameters())
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-        return checkpoint['epoch'] + 1, optimizer
+        torch.save(self.model.state_dict(), f'checkpoints/{self.config.General.label}_{epoch}.tar')
 
 
 """

@@ -1,5 +1,16 @@
 # Results
 
+### PLAUTFIG18-20200907
+> * **Description**: Six sets of simulations with varying parameters for replicating Fig 18 in the Plaut paper
+> * **Test Descriptions**:
+>   * TEST1: Base simulation
+>   * TEST2: Base simulation with increased weight decay
+>   * TEST3: Base simulation with further increased weight decay
+>   * TEST4: SGD optimizer only (lr=0.0001, m=0.9)
+>   * TEST5: SGD optimizer only with increased weight decay
+>   * TEST6: SGD optimizer only with further increased weight decay
+> * **Notes**: Please see `Correlation Plots.docx` for plots and more detailed descriptions of tests.
+
 ### BASE-20200818
 > * **Description**: Change loss function to generalized cross entropy loss
 > * **Note**: GCE loss will be used for all future simulations unless noted otherwise

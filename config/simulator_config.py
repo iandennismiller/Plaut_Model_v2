@@ -7,6 +7,10 @@ Date Created    : July 12, 2020
 Last Updated    : July 18, 2020
 
 === UPDATE NOTES ===
+ > September 7, 2020
+    - minor fix to assert statement
+ > August 30, 2020
+    - removal of checkpoint filepath
  > July 19, 2020
     - remove option of specifying certain word types to track
  > July 18, 2020
@@ -41,7 +45,8 @@ class Config:
 
             # ERROR CHECKING
             assert self.anchor_epoch > 0, "ERROR: Anchor Epoch must be greater than 0"
-            assert self.total_epochs > self.anchor_epoch, "ERROR: Total Epochs must be greater than Anchor Epoch"
+            assert self.total_epochs >= self.anchor_epoch, "ERROR: Total Epochs must be greater than or " \
+                                                           "equal to Anchor Epoch"
             assert 0 <= self.target_radius <= 1, "ERROR: Target Radius must be between 0 and 1"
 
     class Checkpoint:
@@ -49,7 +54,6 @@ class Config:
             self.save_epochs = config['checkpoint']['save_epochs']
             if not self.save_epochs:
                 self.save_epochs = []
-            self.filepath = config['checkpoint']['filepath']
 
     class Dataset:
         def __init__(self, config):
