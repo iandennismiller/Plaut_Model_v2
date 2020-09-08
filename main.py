@@ -11,6 +11,8 @@ Last Updated    : August 5, 2020
    tests with combinations of anchor sets and random seeds
 
 === UPDATE NOTES ===
+ > September 7, 2020
+    - make a copy of simulator config in results folder
  > August 5, 2020
     - edit file description based on changed config file
  > July 26, 2020
@@ -29,10 +31,10 @@ Last Updated    : August 5, 2020
 """
 
 import argparse
-import configparser
 import logging
 import sys
 import yaml
+import shutil
 from simulator.simulator import Simulator
 
 parser = argparse.ArgumentParser(description='This script will run a series of \
@@ -59,6 +61,7 @@ def write_config_file(anchor, random_seed):
 def run_simulation(series=False):
     sim = Simulator("config/simulator_config.yaml", series=series)
     sim.train()
+    return sim.config.General.rootdir
 
 
 if __name__ == "__main__":
@@ -96,15 +99,19 @@ if __name__ == "__main__":
             while len(up_sets) > 0:  # for each dilution level
                 logger.info(f"Testing with seed {seed} and anchor sets {up_sets}")
                 write_config_file(up_sets, seed)
-                run_simulation(series=True)
+                folder = run_simulation(series=True)
+                shutil.copy('config/simulator_config.yaml', f'{folder}/simulator_config.yaml')
                 up_sets.pop(-1)
 
             # downwards order
             while len(down_sets) > 0:  # for each dilution level
                 logger.info(f"Testing with seed {seed} and anchor sets {down_sets}")
                 write_config_file(down_sets, seed)
-                run_simulation(series=True)
+                folder = run_simulation(series=True)
+                shutil.copy('config/simulator_config.yaml', f'{folder}/simulator_config.yaml')
                 down_sets.pop(-1)
 
     else:
-        run_simulation(series=False)
+        folder = run_simulation(series=False)
+        shutil.copy('config/simulator_config.yaml', f'{folder}/simulator_config.yaml')
+

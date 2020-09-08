@@ -31,9 +31,10 @@ analysis/.vscode/
 /.ipynb_checkpoints/
 /.vscode/
 /.idea/
+/resources/
 
 # ignore test file
 *.ipynb
 
 # ignore gui (wip)
-/gui/**
+/gui/
