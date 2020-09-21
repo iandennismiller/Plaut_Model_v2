@@ -21,8 +21,7 @@ import logging
 import os
 import sys
 
-from analysis.density_plots import DensityPlots
-from analysis.hidden_similarity import HiddenSimilarity
+from analysis import DensityPlots, HiddenSimilarity, WeightDistribution
 
 parser = argparse.ArgumentParser(description='This script will run the specified analysis script')
 
@@ -58,3 +57,8 @@ if __name__ == "__main__":
     elif args.analysis_type in ['hidden_similarity', 'hs']:
         hs = HiddenSimilarity(args.checkpoint, args.checkpoint2)
         hs.create_plots(args.dataset)
+
+    elif args.analysis_type in ['weight_distribution', 'wd']:
+        wd = WeightDistribution(args.checkpoint)
+        wd.create_distribution_plots()
+        wd.create_distribution_video()

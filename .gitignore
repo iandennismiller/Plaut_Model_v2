@@ -33,6 +33,10 @@ analysis/.vscode/
 /.vscode/
 /.idea/
 /resources/
+/results/archive/
+
+# ignore temp analysis results folder
+analysis/weight_distribution/
 
 # ignore test file
 *.ipynb
