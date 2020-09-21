@@ -1,10 +1,10 @@
 """
-results_tool.py
+results.py
 
 === SUMMARY ===
 Description     : Class to store results and plot
 Date Created    : May 04, 2020
-Last Updated    : July 26, 2020
+Last Updated    : September 9, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -13,6 +13,8 @@ Last Updated    : July 26, 2020
     - simulation label is added to plots
 
 === UPDATE NOTES ===
+ > September 9, 2020
+    - parameter renaming
  > July 26, 2020
     - re-add compression for csv files
  > July 19, 2020
@@ -48,10 +50,10 @@ Last Updated    : July 26, 2020
 import pandas as pd
 import logging
 from matplotlib import pyplot as plt
-
+import seaborn as sns
 
 class Results:
-    def __init__(self, results_dir, config, title="", labels=("", ""), categories=None):
+    def __init__(self, results_dir, config, title="", labels=("", ""), columns=None):
         """
         Initializes a class for storing, plotting, and saving data
 
@@ -62,12 +64,12 @@ class Results:
             sim_label {str} -- simulation label for annotating plots (default: {""})
             title {str} -- title for plotting (default: {""})
             labels {str} -- x-axis and y-axis label for plotting (default: {("", "")})
-            categories {list} -- categories of y data (default: {None})
+            columns {list} -- columns of y data (default: {None})
             anchor {int} -- epoch that anchors are added, for annotation on plot (default: {None})
         """
 
-        if categories is None:
-            categories = [""]
+        if columns is None:
+            columns = [""]
         self.title = title
         self.x_label, self.y_label = labels
         self.sim_label = config.General.label
@@ -75,10 +77,12 @@ class Results:
         self.anchor = config.Training.anchor_epoch
         self.index = []
         self.values = {}
-        for key in categories:
+        for key in columns:
             self.values[key] = []
-        self.shape = (0, len(categories))
+        self.shape = (0, len(columns))
         self.logger = logging.getLogger('__main__.' + __name__)
+
+        sns.set_style('darkgrid')
 
     def __len__(self):
         """

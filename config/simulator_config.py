@@ -4,7 +4,7 @@ simulator_config.py
 === SUMMARY ===
 Description     : Load information from config file
 Date Created    : July 12, 2020
-Last Updated    : July 18, 2020
+Last Updated    : September 8, 2020
 
 === UPDATE NOTES ===
  > September 7, 2020
@@ -23,6 +23,7 @@ Last Updated    : July 18, 2020
 import os
 import yaml
 from datetime import datetime
+import logging
 
 
 class Config:
@@ -52,8 +53,13 @@ class Config:
     class Checkpoint:
         def __init__(self, config):
             self.save_epochs = config['checkpoint']['save_epochs']
+            self.save_frequency = config['checkpoint']['save_frequency']
+
             if not self.save_epochs:
                 self.save_epochs = []
+
+            assert not all([self.save_epochs, self.save_frequency]), "ERROR: Either save epochs or save frequency " \
+                                                                     "can be specified, but not both."
 
     class Dataset:
         def __init__(self, config):
@@ -72,30 +78,20 @@ class Config:
             self.plotting = config['outputs']['plotting']
             self.hidden_activations = config['outputs']['activations']['hidden']
             self.output_activations = config['outputs']['activations']['output']
+            self.sim_results = config['outputs']['sim_results']
             self.weights = config['outputs']['weights']
 
     class Optimizer:
         def __init__(self, config):
-            self.optim_config = {
-                'start_epoch': [],
-                'optimizer': [],
-                'learning_rate': [],
-                'momentum': [],
-                'weight_decay': []
-            }
-            i = 1
-            while True:
-                try:
-                    self.optim_config['start_epoch'].append(int(config['optim' + str(i)]['start_epoch']))
-                    self.optim_config['optimizer'].append(config['optim' + str(i)]['optimizer'])
-                    for category in ['learning_rate', 'momentum', 'weight_decay']:
-                        self.optim_config[category].append(float(config['optim' + str(i)][category]))
-                    i += 1
-                except KeyError:
-                    break
-
-            assert set(self.optim_config['optimizer']).issubset({'Adam', 'SGD'}), "ERROR: Only Adam or SGD can be used."
-            assert 1 in self.optim_config['start_epoch'], "ERROR: Must specify starting optimizer"
+            self.optim_config = config['optimizers']
+            assert 1 in self.optim_config.keys(), "ERROR: Starting optimizer (at epoch 1) must be specified"
+            for key, value in self.optim_config.items():
+                assert key > 0, "ERROR: Start epoch of optimizer must be greater than 0"
+                assert value['optimizer'] in ['SGD', 'Adam'], "ERROR: Only SGD or Adam optimizers are supported"
+                assert value['learning_rate'] > 0, "ERROR: Learning rate must be greater than 0"
+                assert value['momentum'] >= 0 if value['optimizer'] == 'SGD' else True, "ERROR: Momentum must be " \
+                                                                                        "greater than or equal to 0"
+                assert value['weight_decay'] >= 0, "ERROR: Weight decay must be greater than 0"
 
     class General:
         def __init__(self, config, Dataset):
