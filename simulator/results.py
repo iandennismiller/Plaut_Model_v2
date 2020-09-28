@@ -4,7 +4,7 @@ results.py
 === SUMMARY ===
 Description     : Class to store results and plot
 Date Created    : May 04, 2020
-Last Updated    : September 9, 2020
+Last Updated    : September 27, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -13,6 +13,8 @@ Last Updated    : September 9, 2020
     - simulation label is added to plots
 
 === UPDATE NOTES ===
+ > September 27, 2020
+    - add functonality of saving final plots in simulation root folder
  > September 9, 2020
     - parameter renaming
  > July 26, 2020
@@ -163,7 +165,7 @@ class Results:
 
         self.shape = (self.shape[0], self.shape[1] + 1)
 
-    def line_plot(self, mapping=None):
+    def line_plot(self, mapping=None, final=False):
         """
         Creates a Line Plot of all the data points
 
@@ -187,7 +189,7 @@ class Results:
 
         # add legend if needed
         if len(self.values) > 1:
-            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=len(self.values.keys()))
 
         # add line for anchors if needed
         if max(self.index) > self.anchor:
@@ -198,10 +200,14 @@ class Results:
 
         # ensure everything fits, save, and close
         plt.tight_layout()
-        plt.savefig(f"{self.results_dir}/{self.title} {max(self.index):03d}.png", dpi=200)
+        if final:
+            parent_dir = '/'.join(self.results_dir.split('/')[:-1])
+            plt.savefig(f"{parent_dir}/{self.title}.png", dpi=200)
+        else:
+            plt.savefig(f"{self.results_dir}/{self.title} {max(self.index):04d}.png", dpi=200)
         plt.close()
 
-    def bar_plot(self):
+    def bar_plot(self, final=False):
         """
         Creates a Bar Plot for current epoch
 
@@ -221,7 +227,11 @@ class Results:
 
         # ensure everything fits, save, and close
         plt.tight_layout()
-        plt.savefig(f"{self.results_dir}/{self.title} Bar {max(self.index):03d}.png", dpi=200)
+        if final:
+            parent_dir = '/'.join(self.results_dir.split('/')[:-1])
+            plt.savefig(f"{parent_dir}/{self.title} Bar.png", dpi=200)
+        else:
+            plt.savefig(f"{self.results_dir}/{self.title} Bar {max(self.index):04d}.png", dpi=200)
         plt.close()
 
     def save_data(self, index_label="epoch", save_type='csv'):
