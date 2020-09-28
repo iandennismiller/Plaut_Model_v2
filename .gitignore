@@ -10,10 +10,6 @@ results/*/*/Running Time *.png
 *.csv.gz
 *.pkl
 # Only plots at epoch 350, 700 and 1000, but no bar plots
-results/*/*/*/*.png
-!results/*/*/*/*350.png
-!results/*/*/*/*700.png
-!results/*/*/*/*1000.png
 results/*/*/*/*Bar*.png
 # ignore image files for density plots
 results/**/density_plots/**/*.png
