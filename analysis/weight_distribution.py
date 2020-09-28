@@ -3,12 +3,14 @@ weight_distribution.py
 
 === SUMMARY ===
 Description     : Plot the distribution of weights in each layer of the network
-Date Created    : September 20, 2020
+Date Created    : September 27, 2020
 Last Updated    : September 20, 2020
 
 === UPDATE NOTES ===
+> September 27, 2020
+    - update to close plots after saving
 > September 20, 2020
-- file created
+    - file created
 """
 
 import numpy as np
@@ -89,6 +91,7 @@ class WeightDistribution:
             plt.tight_layout()
             plt.subplots_adjust(top=0.88)
             plt.savefig(f'{WeightDistribution.TEMP_PLOTS_FOLDER}/epoch_{epoch}.png')
+            plt.close()
 
     def create_distribution_video(self, fps: float = 2):
         """

@@ -6,14 +6,13 @@ training:
   target_radius: 0.1
   total_epochs: 700
 checkpoint:
-  filepath: null
-  save_epochs: null
+  save_epochs:
+  save_frequency: 50
 dataset:
   anchor: dataset/anchors_may07.csv
   anchor_freq: 10
   anchor_sets:
-  - 1
-  - 2
+    - 1
   plaut: dataset/plaut_may07.csv
   probe: dataset/probes_may07.csv
 outputs:
@@ -31,22 +30,26 @@ outputs:
     loss: 50
     plaut_acc: 50
     probe_acc: 50
+    running_time: 700
+  sim_results: 1
   weights: 10
-optim1:
-  learning_rate: 0.0001
-  momentum: 0
-  optimizer: SGD
-  start_epoch: 1
-  weight_decay: 1.0e-06
-optim2:
-  learning_rate: 0.01
-  momentum: 0
-  optimizer: Adam
-  start_epoch: 11
-  weight_decay: 1.0e-06
-optim3:
-  learning_rate: 0.01
-  momentum: 0
-  optimizer: Adam
-  start_epoch: 351
-  weight_decay: 1.0e-06
+
+optimizers:
+  1:
+    learning_rate: 0.0001
+    momentum: 0
+    optimizer: SGD
+    start_epoch: 1
+    weight_decay: 1.0e-6
+  11:
+    learning_rate: 0.01
+    momentum: 0
+    optimizer: Adam
+    start_epoch: 11
+    weight_decay: 1.0e-6
+  351:
+    learning_rate: 0.01
+    momentum: 0
+    optimizer: Adam
+    start_epoch: 351
+    weight_decay: 1.0e-6
