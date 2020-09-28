@@ -1,0 +1,25 @@
+group_directory:
+sim_directory:
+
+filters:
+  seed:
+  dilution:
+  order:
+
+title: 'Simulation Report'
+
+content:
+  - heading:
+      type: default
+  - sim_config:
+      basic: True
+      optimizers: True
+  - plot:
+      type: loss
+      width: half
+  - plot:
+      type: plaut_accuracy
+      width: half
+  - plot:
+      type: hidden_similarity
+      width: full
