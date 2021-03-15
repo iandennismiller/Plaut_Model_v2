@@ -8,7 +8,7 @@ simulation:
 	python3 main.py single
 	@echo "Results are in ./results/BASE*"
 
-hidden-layer-viz:
-	python3 analysis.py hidden_similarity \
-		-c BASE-S1D2O1-20210315_700 \
+hidden-layer-fig18:
+	python3 analysis.py hidden_similarity_lens \
+		-c LENS-20210314-1 \
 		-d plaut_fig18_data.csv

@@ -23,6 +23,7 @@ import sys
 
 from analysis.density_plots import DensityPlots
 from analysis.hidden_similarity import HiddenSimilarity
+from analysis.hidden_similarity_lens import HiddenSimilarityLens
 
 parser = argparse.ArgumentParser(description='This script will run the specified analysis script')
 
@@ -57,4 +58,8 @@ if __name__ == "__main__":
 
     elif args.analysis_type in ['hidden_similarity', 'hs']:
         hs = HiddenSimilarity(args.checkpoint, args.checkpoint2)
+        hs.create_plots(args.dataset)
+
+    elif args.analysis_type in ['hidden_similarity_lens', 'hsl']:
+        hs = HiddenSimilarityLens(args.checkpoint)
         hs.create_plots(args.dataset)
