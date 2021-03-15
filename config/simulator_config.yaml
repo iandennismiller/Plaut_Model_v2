@@ -6,8 +6,8 @@ training:
   target_radius: 0.1
   total_epochs: 700
 checkpoint:
-  filepath: null
-  save_epochs: null
+  filepath: checkpoints/
+  save_epochs: [350, 700]
 dataset:
   anchor: dataset/anchors_may07.csv
   anchor_freq: 10
