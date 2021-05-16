@@ -21,7 +21,8 @@ Last Updated    : January 18, 2021
 
 from simulator.model import PlautNet
 from common.helpers import *
-from common.constants import PlotTypes
+# from common.constants import PlotTypes
+
 import torch
 import pandas as pd
 import numpy as np
@@ -40,9 +41,7 @@ plot_linestyle = {
     'orth_phon_corr': 'solid',
     'orth_hidden_corr': 'dashed',
     'hidden_phon_corr': 'dotted',
-    'orth_target_corr': 'solid',
-    'hidden_target_corr': 'dotted'
-}
+
 plot_alpha = {
     'orth_phon_corr': 1,
     'orth_hidden_corr': 1,
@@ -50,6 +49,7 @@ plot_alpha = {
     'orth_target_corr': 0.3,
     'hidden_target_corr': 0.3
 }
+ 
 plot_labels = {
     'orth_phon_corr': 'Orth-Phon',
     'orth_hidden_corr': 'Orth-Hidden',
@@ -61,6 +61,7 @@ plot_labels = {
 
 class HiddenSimilarityLens:
     __ORTH_PHON_MAPPING = 'dataset/plaut_fig18_orth_phon_mapping.csv'
+
     def __init__(self, label):
         self.logger = logging.getLogger('__main__.' + __name__)
         self.model = PlautNet()
@@ -73,10 +74,17 @@ class HiddenSimilarityLens:
         self.orth_phon_mapping = pd.read_csv(HiddenSimilarityLens.__ORTH_PHON_MAPPING).set_index('orth', drop=True)
         self.orth_phon_mapping['targets'] = self.orth_phon_mapping['phon'].apply(lambda x: get_phonemes(x))
 
+#     def find_epochs(self):
+#         files = os.listdir(self.result_dir)
+#         epoch = set([int(x.split('-')[1]) for x in files if 'recurrent' in x])
+#         epoch = sorted(list(epoch))
+#         # self.epoch = self.find_epochs() # for old version
+
     def find_epochs(self):
         files = os.listdir(self.result_dir)
-        epoch = set([int(x.split('-')[1]) for x in files if 'recurrent' in x])
+        epoch = set([int(x.split('-')[1]) for x in files if 'activations' in x])
         epoch = sorted(list(epoch))
+        print(epoch)
         return epoch
 
     @staticmethod
@@ -86,7 +94,8 @@ class HiddenSimilarityLens:
         for epoch in tqdm(list(df['epoch'].unique())):
             temp = df[df['epoch'] == epoch].reset_index(drop=True)
 
-            for cat in ['graphemes', 'hidden', 'phonemes', 'targets']:
+           # for cat in ['graphemes', 'hidden', 'phonemes', 'targets']:
+            for cat in ['graphemes', 'hidden', 'phonemes']:
                 corr_df = temp[cat].apply(pd.Series).T.corr()
                 temp[f'{cat}_corr_vector'] = corr_df.values.tolist()
                 temp[f'{cat}_corr_vector'] = temp.apply(
@@ -103,19 +112,21 @@ class HiddenSimilarityLens:
                                                                   row['phonemes_corr_vector'])[0, 1], axis=1)
         df['orth_phon_corr'] = df.apply(lambda row: np.corrcoef(row['graphemes_corr_vector'],
                                                                 row['phonemes_corr_vector'])[0, 1], axis=1)
-        df['orth_target_corr'] = df.apply(lambda row: np.corrcoef(row['graphemes_corr_vector'],
-                                                                row['targets_corr_vector'])[0, 1], axis=1)
-        # df['hidden_target_corr'] = df.apply(lambda row: np.corrcoef(row['hidden_corr_vector'],
-        #                                                           row['targets_corr_vector'])[0, 1], axis=1)
+
+        # df['orth_target_corr'] = df.apply(lambda row: np.corrcoef(row['graphemes_corr_vector'],
+        #                                                         row['targets_corr_vector'])[0, 1], axis=1)
         return df
 
     def find_graphemes_hidden_phonemes(self, df):
         df['graphemes'] = df['orth'].apply(lambda x: get_graphemes(x))
 
         # read results files
-        with open(self.result_dir + f"/recurrent-training-activations-hidden.txt") as f:
+
+        # with open(self.result_dir + f"/recurrent-training-activations-hidden.txt") as f:
+        with open(self.result_dir + f"/activations-hidden.txt") as f:
             hidden_results = f.readlines()
-        with open(self.result_dir + f"/recurrent-training-activations-output.txt") as f:
+        # with open(self.result_dir + f"/recurrent-training-activations-output.txt") as f:
+        with open(self.result_dir + f"/activations-output.txt") as f:
             output_results = f.readlines()
 
         # parse hidden layer results file for results
@@ -153,12 +164,17 @@ class HiddenSimilarityLens:
                     'epoch': int(epoch),
                     'orth': orth,
                     'phonemes': np.array(output).astype(float).tolist(),
-                    'targets': self.orth_phon_mapping.loc[orth, 'targets']
+                    # 'targets': self.orth_phon_mapping.loc[orth, 'targets']
                 })
             else:
                 continue
 
         output_df = pd.DataFrame(data=output_data)
+
+        # target_df = pd.DataFrame(data=target_data)
+        # output_df = output_df.merge(target_df, on=['orth', 'epoch'])
+
+        print(hidden_df)
 
         result_df = pd.merge(hidden_df, output_df, on=['orth', 'epoch'])
         result_df = pd.merge(result_df, df, on='orth')
@@ -270,7 +286,8 @@ class HiddenSimilarityLens:
         #     nonwords2 = self.calculate_cross_layer_correlation(nonwords2)
 
         # average and plot
-        cols = ['orth_phon_corr',  'orth_target_corr', 'orth_hidden_corr', 'hidden_phon_corr']
+        # cols = ['orth_phon_corr',  'orth_target_corr', 'orth_hidden_corr', 'hidden_phon_corr']
+        cols = ['orth_phon_corr', 'orth_hidden_corr', 'hidden_phon_corr']
         max_epoch = regulars['epoch'].max()
         num_samples = len(regulars[regulars['epoch'] == max_epoch])
         regulars_line = regulars[['epoch']+cols].groupby(by='epoch').mean()
@@ -289,6 +306,7 @@ class HiddenSimilarityLens:
                                regulars_bar.loc[['std']].rename(index={'std': 'Regulars'}),
                                exceptions_bar.loc[['std']].rename(index={'std': 'Exceptions'})])
 
+        print(num_samples)
         bar_error = bar_error.rename(columns=plot_labels) / np.sqrt(num_samples)
 
         # if self.checkpoint2:
@@ -302,11 +320,16 @@ class HiddenSimilarityLens:
         sns.set_style('darkgrid')
         fig, ax = plt.subplots(figsize=(9, 6))
         for i in cols:
-            regulars_line[i].plot.line(ax=ax, color=plot_colours['regular'], marker='.', alpha=plot_alpha[i],
+#             regulars_line[i].plot.line(ax=ax, color=plot_colours['regular'], marker='.', alpha=plot_alpha[i],
+#                                        linestyle=plot_linestyle[i], label=f'{plot_labels[i]} | Regular')
+#             exceptions_line[i].plot.line(ax=ax, color=plot_colours['exception'], marker='.', alpha=plot_alpha[i],
+#                                          linestyle=plot_linestyle[i], label=f'{plot_labels[i]} | Exception')
+#             nonwords_line[i].plot.line(ax=ax, color=plot_colours['nonword'], marker='.', alpha=plot_alpha[i],
+            regulars_line[i].plot.line(ax=ax, color=plot_colours['regular'], marker='.',
                                        linestyle=plot_linestyle[i], label=f'{plot_labels[i]} | Regular')
-            exceptions_line[i].plot.line(ax=ax, color=plot_colours['exception'], marker='.', alpha=plot_alpha[i],
+            exceptions_line[i].plot.line(ax=ax, color=plot_colours['exception'], marker='.',
                                          linestyle=plot_linestyle[i], label=f'{plot_labels[i]} | Exception')
-            nonwords_line[i].plot.line(ax=ax, color=plot_colours['nonword'], marker='.', alpha=plot_alpha[i],
+            nonwords_line[i].plot.line(ax=ax, color=plot_colours['nonword'], marker='.',
                                        linestyle=plot_linestyle[i], label=f'{plot_labels[i]} | Nonword')
 
         plt.xlabel('Epoch')
@@ -315,7 +338,8 @@ class HiddenSimilarityLens:
         plt.suptitle('Similarity Correlations (Plaut Figure 18)')
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.09), ncol=len(cols))
         plt.tight_layout(rect=[0, 0, 1, 0.97])
-        plt.savefig(f'{self.result_dir}/{PlotTypes.HIDDEN_SIMILARITY}.png', dpi=150)
+#         plt.savefig(f'{self.result_dir}/{PlotTypes.HIDDEN_SIMILARITY}.png', dpi=150)
+        plt.savefig(f'{self.result_dir}/hidden_similarity.png', dpi=150)
 
         fig, ax = plt.subplots(figsize=(8, 6))
         bar_mean.T.plot.bar(rot=0, yerr=bar_error.T, capsize=4, ax=ax)
@@ -326,7 +350,8 @@ class HiddenSimilarityLens:
         plt.minorticks_on()
         plt.grid(b=True, which='minor', axis='y', alpha=0.5)
         plt.tight_layout(rect=[0, 0, 1, 0.97])
-        plt.savefig(f'{self.result_dir}/{PlotTypes.HIDDEN_SIMILARITY}_bar.png', dpi=150)
+#         plt.savefig(f'{self.result_dir}/{PlotTypes.HIDDEN_SIMILARITY}_bar.png', dpi=150)
+        plt.savefig(f'{self.result_dir}/hidden_similarity_bar.png', dpi=150)
 
         # if self.result_dir2 is not None:
         #     plt.savefig(f'{self.result_dir2}/{PlotTypes.HIDDEN_SIMILARITY}.png', dpi=150)
