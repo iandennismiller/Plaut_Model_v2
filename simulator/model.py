@@ -4,7 +4,7 @@ model.py
 === SUMMARY ===
 Description     : Define the model architecture
 Date Created    : May 03, 2020
-Last Updated    : July 18, 2020
+Last Updated    : September 28, 2020
 
 === DETAILED DESCRIPTION ===
  > Model Architecture
@@ -16,6 +16,8 @@ Last Updated    : July 18, 2020
 
 
 === UPDATE NOTES ===
+ > September 28, 2020
+    - update function docstrings
  > July 18, 2020
     - minor reformatting changes
  > May 24, 2020
@@ -32,6 +34,9 @@ class PlautNet(nn.Module):
     def __init__(self):
         """
         Initializes model by defining architecture and initializing weights
+
+        Returns:
+            None
         """
         super(PlautNet, self).__init__()
         self.layer1 = nn.Linear(105, 100)
@@ -41,6 +46,9 @@ class PlautNet(nn.Module):
     def init_weights(self):
         """
         Initializes weights and bias according to description above
+
+        Returns:
+            None
         """
         init_range = 0.1
 
@@ -53,7 +61,12 @@ class PlautNet(nn.Module):
     def forward(self, x):
         """
         Implements forward pass of the model
-        Returns hidden layer activations, and output layer activations
+
+        Arguments:
+            x (torch.Tensor): input to the model
+
+        Returns:
+             (torch.Tensor, torch.Tensor): hidden layer activations, output layer activations
         """
         x = torch.sigmoid(self.layer1(x))
         return x, torch.sigmoid(self.layer2(x))

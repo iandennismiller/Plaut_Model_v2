@@ -21,7 +21,7 @@ import logging
 import os
 import sys
 
-from analysis import DensityPlots, HiddenSimilarity, WeightDistribution
+from analysis import DensityPlots, HiddenSimilarity, WeightDistribution, LensRepresentation, HiddenSimilarityLens
 
 parser = argparse.ArgumentParser(description='This script will run the specified analysis script')
 
@@ -62,3 +62,11 @@ if __name__ == "__main__":
         wd = WeightDistribution(args.checkpoint)
         wd.create_distribution_plots()
         wd.create_distribution_video()
+
+    elif args.analysis_type in ['lens_representation', 'lr']:
+        lr = LensRepresentation(args.dataset)
+        lr.create_lens_file()
+
+    elif args.analysis_type in ['hidden_similarity_lens', 'hsl']:
+        hsl = HiddenSimilarityLens(args.results_dir)
+        hsl.create_plots(args.dataset)

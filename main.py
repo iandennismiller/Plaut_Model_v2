@@ -3,8 +3,8 @@ plaut_model.py
 
 === SUMMARY ===
 Description     : Code for running a series of simulations
-Date Created    : September 27, 2020
-Last Updated    : August 5, 2020
+Date Created    : May 8, 2020
+Last Updated    : September 27, 2020
 
 === DETAILED DESCRIPTION ===
  > Given the parameters simulator_config.yaml file, this script will run a series of

@@ -39,17 +39,14 @@ optimizers:
     learning_rate: 0.0001
     momentum: 0
     optimizer: SGD
-    start_epoch: 1
     weight_decay: 1.0e-6
   11:
     learning_rate: 0.01
     momentum: 0
     optimizer: Adam
-    start_epoch: 11
     weight_decay: 1.0e-6
   351:
     learning_rate: 0.01
     momentum: 0
     optimizer: Adam
-    start_epoch: 351
     weight_decay: 1.0e-6

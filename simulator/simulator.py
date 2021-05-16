@@ -4,7 +4,7 @@ simulator.py
 === SUMMARY ===
 Description     : Code for running simulation for training model and saving results
 Date Created    : May 03, 2020
-Last Updated    : September 8, 2020
+Last Updated    : September 20, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -22,6 +22,10 @@ Last Updated    : September 8, 2020
     - anchors are now placed in one single csv file, and anchor sets are chosen in simulator_config.cfg
 
 === UPDATE NOTES ===
+ > September 20, 2020
+    - migrate results objects to results_handler class
+    - update function for saving checkpoints
+    - update function for setting optimizer based on simulator config changes
  > September 7, 2020
     - remove logging for creating checkpoints
  > August 30, 2020
