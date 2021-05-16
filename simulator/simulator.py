@@ -4,7 +4,7 @@ simulator.py
 === SUMMARY ===
 Description     : Code for running simulation for training model and saving results
 Date Created    : May 03, 2020
-Last Updated    : July 27, 2020
+Last Updated    : September 20, 2020
 
 === DETAILED DESCRIPTION ===
  > Changes from v1
@@ -22,6 +22,10 @@ Last Updated    : July 27, 2020
     - anchors are now placed in one single csv file, and anchor sets are chosen in simulator_config.cfg
 
 === UPDATE NOTES ===
+ > September 20, 2020
+    - migrate results objects to results_handler class
+    - update function for saving checkpoints
+    - update function for setting optimizer based on simulator config changes
  > September 7, 2020
     - remove logging for creating checkpoints
  > August 30, 2020
@@ -75,13 +79,15 @@ import copy
 import numpy as np
 import torch
 import torch.optim as optim
+import torch.nn as nn
 
 from config.simulator_config import Config
 from common.helpers import *
 from common.constants import WordTypes
 from simulator.dataset import PlautDataset
 from simulator.model import PlautNet
-from simulator.results_tool import Results
+from simulator.results import Results
+from simulator.results_handler import ResultsHandler
 from simulator.GCELoss import GCELoss
 
 
@@ -116,6 +122,8 @@ class Simulator:
         # initialize model
         self.model = PlautNet()
         self.criterion = None
+        self.optimizer = None
+        self.epoch = -1
         self.logger.debug("Model successfully initialized")
         self.logger.info("Simulator initialization completed")
 
@@ -130,8 +138,7 @@ class Simulator:
 
         # choose the specified anchor sets and set frequency appropriately
         anchor_ds.restrict_set(self.config.Dataset.anchor_sets)
-        anchor_ds.set_frequency(
-            self.config.Dataset.anchor_base_freq / len(self.config.Dataset.anchor_sets))
+        anchor_ds.set_frequency(self.config.Dataset.anchor_base_freq / len(self.config.Dataset.anchor_sets))
 
         # return datasets and sizes
         return plaut_ds, anchor_ds, probe_ds
@@ -143,78 +150,33 @@ class Simulator:
 
         """ SETUP """
         # define loss function (generalized cross entropy loss)
-        self.criterion = GCELoss(reduction='none')
+        self.criterion = nn.BCELoss(reduction='none')
 
         # initialize results storage classes
-        training_loss = Results(results_dir=self.config.General.rootdir + "/Training Loss",
-                                config=self.config,
-                                title="Training Loss",
-                                labels=("Epoch", "Loss"))
-
-        plaut_accuracy = Results(results_dir=self.config.General.rootdir + "/Training Accuracy",
-                                 config=self.config,
-                                 title="Training Accuracy",
-                                 labels=("Epoch", "Accuracy"),
-                                 categories=WordTypes.plaut_types)
-        anchor_accuracy = Results(results_dir=self.config.General.rootdir + "/Anchor Accuracy",
-                                  config=self.config,
-                                  title="Anchor Accuracy",
-                                  labels=("Epoch", "Accuracy"),
-                                  categories=WordTypes.anchor_types)
-        probe_accuracy = Results(results_dir=self.config.General.rootdir + "/Probe Accuracy",
-                                 config=self.config,
-                                 title="Probe Accuracy",
-                                 labels=("Epoch", "Accuracy"),
-                                 categories=WordTypes.probe_types)
+        results_handler = ResultsHandler(config=self.config)
 
         output_data = Results(results_dir=self.config.General.rootdir,
                               config=self.config,
                               title="Simulation Results",
                               labels=('Epoch', ""),
-                              categories=['example_id', 'orth', 'phon', 'category', 'correct', 'anchors_added'])
-        time_data = Results(results_dir=self.config.General.rootdir,
-                            config=self.config,
-                            title="Running Time",
-                            labels=("Epoch", "Time (s)"))
-        hl_activation_data = Results(results_dir=self.config.General.rootdir,
-                                     config=self.config,
-                                     title="Hidden Layer Activations",
-                                     categories=['orth', 'category', 'activation'])
-        ol_activation_data = Results(results_dir=self.config.General.rootdir,
-                                     config=self.config,
-                                     title="Output Layer Activations",
-                                     categories=['orth', 'category', 'activation'])
-
-        model_weights = Results(results_dir=self.config.General.rootdir,
-                                config=self.config,
-                                title="Model Weights",
-                                categories=['weights'])
-
-        start_epoch = 1
-
-        optimizer = None
-        t = tqdm(range(start_epoch, self.config.Training.total_epochs+1), smoothing=0.15)
+                              columns=['example_id', 'orth', 'phon', 'category', 'correct', 'anchors_added'])
 
         """ TRAINING LOOP """
+        t = tqdm(range(1, self.config.Training.total_epochs + 1), smoothing=0.15)
         for epoch in t:
             _epoch_time = time.time()
+            self.epoch = epoch
             epoch_loss = 0
 
             # change optimizer if needed
-            if epoch in self.config.Optimizer.optim_config['start_epoch']:
-                current_optim = self.config.Optimizer.optim_config['start_epoch'].index(epoch)
-                optimizer = self.set_optimizer(current_optim)
+            self.set_optimizer()
 
             """ PLAUT DATASET """
             data = self.plaut_ds[:]  # load data
             loss, accuracy, activations = self.predict(data, categories=WordTypes.plaut_types)
             correct, total, compare = accuracy
-            hl_activations, ol_activations = activations
 
             epoch_loss += loss  # accumulate loss
-
-            # save plaut accuracy results
-            plaut_accuracy.append_row(epoch, (correct / total).tolist())
 
             output_data.add_rows([epoch] * len(compare), {
                 'example_id': list(range(1, 1 + self.plaut_size)),
@@ -224,25 +186,18 @@ class Simulator:
                 'correct': compare,
                 'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
-            # save hidden and output layer data
-            if epoch % self.config.Outputs.hidden_activations['plaut'] == 0:
-                self.save_activation_data(data, epoch, hl_activation_data, hl_activations)
-            if epoch % self.config.Outputs.output_activations['plaut'] == 0:
-                self.save_activation_data(data, epoch, ol_activation_data, ol_activations)
+            # save data
+            results_handler.add_data(category='plaut_accuracy', epoch=self.epoch, data=(correct / total).tolist())
+            results_handler.add_data(category='activations', epoch=self.epoch, data=('plaut', data, activations))
 
             """ ANCHOR DATASET """
             data = self.anchor_ds[:]  # load data
-
             loss, accuracy, activations = self.predict(data, categories=WordTypes.anchor_types)
             correct, total, compare = accuracy
-            hl_activations, ol_activations = activations
 
             # accumulate loss when anchors are added into training set
             if epoch > self.config.Training.anchor_epoch:
                 epoch_loss += loss
-
-            # save anchor accuracy results
-            anchor_accuracy.append_row(epoch, (correct / total).tolist())
 
             # save output data
             output_data.add_rows([epoch] * len(compare), {
@@ -253,21 +208,14 @@ class Simulator:
                 'correct': compare,
                 'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
-            # save hidden and output layer data
-            if epoch >= self.config.Training.anchor_epoch:
-                if epoch % self.config.Outputs.hidden_activations['anchor'] == 0:
-                    self.save_activation_data(data, epoch, hl_activation_data, hl_activations)
-                if epoch % self.config.Outputs.output_activations['anchor'] == 0:
-                    self.save_activation_data(data, epoch, ol_activation_data, ol_activations)
+            # save data
+            results_handler.add_data(category='anchor_accuracy', epoch=self.epoch, data=(correct / total).tolist())
+            results_handler.add_data(category='activations', epoch=self.epoch, data=('anchor', data, activations))
 
             """ PROBE DATASET """
             data = self.probe_ds[:]
             loss, accuracy, activations = self.predict(data, categories=WordTypes.probe_types)  # find loss and accuracy
             correct, total, compare = accuracy
-            hl_activations, ol_activations = activations
-
-            # save probe accuracy results
-            probe_accuracy.append_row(epoch, (correct / total).tolist())
 
             output_data.add_rows([epoch] * len(compare), {
                 'example_id': list(range(1 + self.plaut_size + self.anchor_size,
@@ -279,41 +227,28 @@ class Simulator:
                 'anchors_added': [1 if epoch > self.config.Training.anchor_epoch else 0] * len(compare)})
 
             # save hidden and output layer data
-            if epoch >= self.config.Training.anchor_epoch:
-                if epoch % self.config.Outputs.hidden_activations['probe'] == 0:
-                    self.save_activation_data(data, epoch, hl_activation_data, hl_activations)
-                if epoch % self.config.Outputs.output_activations['probe'] == 0:
-                    self.save_activation_data(data, epoch, ol_activation_data, ol_activations)
+            results_handler.add_data(category='probe_accuracy', epoch=self.epoch, data=(correct / total).tolist())
+            results_handler.add_data(category='activations', epoch=self.epoch, data=('probe', data, activations))
 
             """ UPDATE PARAMETERS, PLOT, SAVE """
             # calculate gradients and update weights
             epoch_loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
-            # save loss results
-            training_loss.append_row(epoch, epoch_loss.item())
+            # save loss results and model weights
+            results_handler.add_data(category='loss', epoch=self.epoch, data=epoch_loss.item())
+            results_handler.add_data(category='weights', epoch=self.epoch, data=copy.deepcopy(self.model.state_dict()))
 
             # plot results
-            if epoch % self.config.Outputs.plotting['loss'] == 0:
-                training_loss.line_plot()
-            if epoch % self.config.Outputs.plotting['plaut_acc'] == 0:
-                plaut_accuracy.line_plot()
-            if epoch % self.config.Outputs.plotting['anchor_acc'] == 0:
-                anchor_accuracy.line_plot(mapping=WordTypes.anchor_mapping)
-            if epoch % self.config.Outputs.plotting['probe_acc'] == 0:
-                probe_accuracy.line_plot(mapping=WordTypes.probe_mapping)
-
-            # save model weights
-            model_weights.append_row(epoch, copy.deepcopy(self.model.state_dict()))
+            results_handler.create_training_plots(epoch=self.epoch)
 
             # save checkpoint
-            if epoch in self.config.Checkpoint.save_epochs:
-                self.save_checkpoint(epoch, optimizer)
+            self.save_checkpoint()
 
             # calculate epoch time
             _epoch_time = time.time() - _epoch_time
-            time_data.append_row(epoch, _epoch_time)
+            results_handler.add_data(category='running_time', epoch=self.epoch, data=_epoch_time)
 
             t.set_description(f"[Epoch {epoch:3d}] loss: {epoch_loss.item():9.2f} | time: {_epoch_time:.4f} |\tProgress")
 
@@ -329,61 +264,47 @@ class Simulator:
 
         for key in ['optimizer', 'learning_rate', 'momentum', 'weight_decay']:
             temp = []
-            for i in range(len(self.config.Optimizer.optim_config['start_epoch'])):
-                epoch_start = max(start_epoch, int(
-                    self.config.Optimizer.optim_config['start_epoch'][i]))  # start of optimizer config
+            start_epochs = sorted(list(self.config.Optimizer.optim_config.keys()))
+            for i in range(len(start_epochs)):
+                epoch_start = start_epochs[i]  # start of optimizer config
                 # end of optimizer config is next item in start, or if no more items, then end is total epochs
                 try:
-                    epoch_end = min(int(
-                        self.config.Optimizer.optim_config['start_epoch'][i + 1]),
-                        self.config.Training.total_epochs + 1)
+                    epoch_end = min(start_epochs[i+1], self.config.Training.total_epochs + 1)
                 except IndexError:
                     epoch_end = self.config.Training.total_epochs + 1
                 for k in range(total_samples):  # once per every word
-                    temp += [self.config.Optimizer.optim_config[key][i]] * (epoch_end - epoch_start)
+                    temp += [self.config.Optimizer.optim_config[epoch_start][key]] * (epoch_end - epoch_start)
             output_data.add_columns({key: temp})
 
         # save data as .csv.gz files and produce final plots
-        output_data.save_data(index_label='epoch')
-        hl_activation_data.save_data(index_label='epoch')
-        ol_activation_data.save_data(index_label='epoch')
-        model_weights.save_data(index_label='epoch', save_type='pickle')
-
-        # produce final plots
-        time_data.line_plot()
-        plaut_accuracy.bar_plot()
-        anchor_accuracy.bar_plot()
-        probe_accuracy.bar_plot()
+        # output_data.save_data(index_label='epoch')
+        results_handler.save_data()
+        results_handler.create_final_plots()
 
         self.logger.info('Simulation completed.')
 
-    @staticmethod
-    def save_activation_data(data, epoch, activation_data, activations):
-        activation_data.add_rows([epoch] * activations.shape[0], {
-            'orth': data['orth'],
-            'category': data['type'],
-            'activation': activations.tolist()
-        })
-
-    def set_optimizer(self, i):
+    def set_optimizer(self):
         """
         Changes the optimizer based on configuration settings
 
         Arguments:
-            i {int} -- optimizer index
+            None
 
         Returns:
-            torch.optim.x.x -- the specified optimizer
+            None
         """
-        if self.config.Optimizer.optim_config['optimizer'][i] == 'Adam':
-            return optim.Adam(self.model.parameters(),
-                              lr=self.config.Optimizer.optim_config['learning_rate'][i],
-                              weight_decay=self.config.Optimizer.optim_config['weight_decay'][i])
-        else:
-            return optim.SGD(self.model.parameters(),
-                             lr=self.config.Optimizer.optim_config['learning_rate'][i],
-                             weight_decay=self.config.Optimizer.optim_config['weight_decay'][i],
-                             momentum=self.config.Optimizer.optim_config['momentum'][i])
+        if self.epoch in self.config.Optimizer.optim_config.keys():
+            current_optim = self.config.Optimizer.optim_config[self.epoch]
+
+            if current_optim['optimizer'] == 'Adam':
+                self.optimizer = optim.Adam(self.model.parameters(),
+                                            lr=current_optim['learning_rate'],
+                                            weight_decay=current_optim['weight_decay'])
+            else:
+                self.optimizer = optim.SGD(self.model.parameters(),
+                                           lr=current_optim['learning_rate'],
+                                           momentum=current_optim['momentum'],
+                                           weight_decay=current_optim['weight_decay'])
 
     def predict(self, data, categories=None):
         """
@@ -425,7 +346,9 @@ class Simulator:
             targets[target_one_indices] = torch.max(target_upper_thresh, outputs_clipped.detach())[target_one_indices]
             targets[target_zero_indices] = torch.min(target_lower_thresh, outputs_clipped.detach())[target_zero_indices]
 
-        loss = self.criterion(outputs_clipped, targets)
+            loss = self.criterion(outputs_clipped, targets)
+        else:
+            loss = self.criterion(outputs, targets)
 
         # find weighted sum of loss
         loss = loss * log_freq
@@ -455,8 +378,20 @@ class Simulator:
         return loss, (np.array(correct), np.array(total), compare), \
             (hl_outputs.detach().numpy(), outputs.detach().numpy())
 
-    def save_checkpoint(self, epoch, optimizer):
-        torch.save(self.model.state_dict(), f'checkpoints/{self.config.General.label}_{epoch}.tar')
+    def save_checkpoint(self):
+        """
+        Saves a checkpoint of the model weights
+
+        Arguments:
+            None
+
+        Returns:
+            None
+        """
+        if self.config.Checkpoint.save_epochs == [] and self.config.Checkpoint.save_frequency is None:
+            return None
+        if self.epoch in self.config.Checkpoint.save_epochs or self.epoch % self.config.Checkpoint.save_frequency == 0:
+            torch.save(self.model.state_dict(), f'checkpoints/{self.config.General.label}_{self.epoch}.tar')
 
 
 """

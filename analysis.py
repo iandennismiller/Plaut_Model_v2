@@ -60,6 +60,18 @@ if __name__ == "__main__":
         hs = HiddenSimilarity(args.checkpoint, args.checkpoint2)
         hs.create_plots(args.dataset)
 
+    elif args.analysis_type in ['weight_distribution', 'wd']:
+        wd = WeightDistribution(args.checkpoint)
+        wd.create_distribution_plots()
+        wd.create_distribution_video()
+
+    elif args.analysis_type in ['lens_representation', 'lr']:
+        lr = LensRepresentation(args.dataset)
+        lr.create_lens_file()
+
+    # elif args.analysis_type in ['hidden_similarity_lens', 'hsl']:
+    #    hsl = HiddenSimilarityLens(args.results_dir)
+    #    hsl.create_plots(args.dataset)
     elif args.analysis_type in ['hidden_similarity_lens', 'hsl']:
         hs = HiddenSimilarityLens(args.checkpoint)
         hs.create_plots(args.dataset)

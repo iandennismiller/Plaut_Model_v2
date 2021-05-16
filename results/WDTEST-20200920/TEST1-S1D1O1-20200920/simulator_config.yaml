@@ -1,0 +1,55 @@
+general:
+  label: TEST1
+  random_seed: 1
+training:
+  anchor_epoch: 350
+  target_radius: 0
+  total_epochs: 350
+checkpoint:
+  save_epochs:
+  save_frequency: 25
+dataset:
+  anchor: dataset/anchors_may07.csv
+  anchor_freq: 10
+  anchor_sets:
+    - 1
+  plaut: dataset/plaut_may07.csv
+  probe: dataset/probes_may07.csv
+outputs:
+  activations:
+    hidden:
+      anchor: 10
+      plaut: 50
+      probe: 10
+    output:
+      anchor: 10
+      plaut: 50
+      probe: 10
+  plotting:
+    anchor_acc: 50
+    loss: 50
+    plaut_acc: 50
+    probe_acc: 50
+    running_time: 700
+  sim_results: 1
+  weights: 10
+
+optimizers:
+  1:
+    learning_rate: 0.0001
+    momentum: 0
+    optimizer: SGD
+    start_epoch: 1
+    weight_decay: 1
+  11:
+    learning_rate: 0.01
+    momentum: 0
+    optimizer: Adam
+    start_epoch: 11
+    weight_decay: 1
+  351:
+    learning_rate: 0.01
+    momentum: 0
+    optimizer: Adam
+    start_epoch: 351
+    weight_decay: 1
