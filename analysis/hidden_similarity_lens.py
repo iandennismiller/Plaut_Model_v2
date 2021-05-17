@@ -41,6 +41,7 @@ plot_linestyle = {
     'orth_phon_corr': 'solid',
     'orth_hidden_corr': 'dashed',
     'hidden_phon_corr': 'dotted',
+}
 
 plot_alpha = {
     'orth_phon_corr': 1,

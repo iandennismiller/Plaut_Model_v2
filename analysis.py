@@ -24,6 +24,9 @@ import sys
 from analysis.density_plots import DensityPlots
 from analysis.hidden_similarity import HiddenSimilarity
 from analysis.hidden_similarity_lens import HiddenSimilarityLens
+from analysis.weight_distribution import WeightDistribution
+from analysis.lens_representation import LensRepresentation
+
 
 parser = argparse.ArgumentParser(description='This script will run the specified analysis script')
 
@@ -32,6 +35,7 @@ parser.add_argument('-r', '--results_dir', type=str)
 parser.add_argument('-c', '--checkpoint', type=str)
 parser.add_argument('-c2', '--checkpoint2', type=str)
 parser.add_argument('-d', '--dataset', type=str)
+parser.add_argument('-l', '--lens_results', type=str)
 
 if __name__ == "__main__":
     # set up logger
@@ -66,8 +70,8 @@ if __name__ == "__main__":
         wd.create_distribution_video()
 
     elif args.analysis_type in ['lens_representation', 'lr']:
-        lr = LensRepresentation(args.dataset)
-        lr.create_lens_file()
+        lr = LensRepresentation()
+        lr.create_lens_file(args.dataset)
 
     # elif args.analysis_type in ['hidden_similarity_lens', 'hsl']:
     #    hsl = HiddenSimilarityLens(args.results_dir)
@@ -75,3 +79,7 @@ if __name__ == "__main__":
     elif args.analysis_type in ['hidden_similarity_lens', 'hsl']:
         hs = HiddenSimilarityLens(args.checkpoint)
         hs.create_plots(args.dataset)
+
+    elif args.analysis_type in ['parse_lens_results']:
+        lr = LensRepresentation()
+        lr.parse_lens_results(args.lens_results)
