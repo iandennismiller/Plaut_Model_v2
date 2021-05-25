@@ -4,7 +4,7 @@ dataset.py
 === SUMMARY === 
 Description     : Defines class for custom dataset for Plaut Model and functions to generate grapheme/phoneme vectors
 Date Created    : May 03, 2020
-Last Updated    : August 4, 2020
+Last Updated    : September 28, 2020
 
 === DETAILED DESCRIPTION ===
  > Functionality
@@ -14,6 +14,8 @@ Last Updated    : August 4, 2020
    - in plaut_dataset.__getitem__, return {type, orth, phon} as lists instead of pandas Series
 
 === UPDATE NOTES ===
+ > September 28, 2020
+    - update function docstrings
  > August 4, 2020
     - move get_grapheme and get_phoneme functions to common/helpers.py
  > July 19, 2020
@@ -43,8 +45,9 @@ class PlautDataset(Dataset):
          - converts orthography and phonology to vector form
 
         Arguments:
-            filepath {str} -- filepath to the file containing orthography, phonology, type, and frequency
+            filepath (str): filepath to the file containing orthography, phonology, type, and frequency
         """
+
         # load dataset
         self.df = pd.read_csv(filepath, na_filter=False, dtype={'freq': float, 'log_freq': float})
 
@@ -65,7 +68,7 @@ class PlautDataset(Dataset):
         Return the number of samples in dataframe
 
         Returns:
-            int -- total number of samples
+            (int): total number of samples
         """
         return len(self.df)
 
@@ -74,10 +77,10 @@ class PlautDataset(Dataset):
         Obtains samples at the specified index/indices
 
         Arguments:
-            index {list} -- list specifying indices of samples desired (can also be tensor)
+            index (list or torch.Tensor): indices of samples desired (can also be tensor)
 
         Returns:
-            dict -- dictionary of word type, orthography, phonology, log frequency, grapheme vector and phoneme vector
+            (dict): dictionary of word type, orthography, phonology, log frequency, grapheme vector and phoneme vector
         """
         if torch.is_tensor(index):  # convert to list if tensor given
             index = index.tolist()
@@ -98,7 +101,10 @@ class PlautDataset(Dataset):
         Sets a new, fixed frequency for all words
 
         Arguments:
-            new_freq {int/float} -- new desired frequency
+            new_freq (int or float): new desired frequency
+
+        Returns:
+            None
         """
         self.df["freq"] = float(new_freq)
         self.df["log_freq"] = np.log(new_freq + 2)
@@ -106,19 +112,38 @@ class PlautDataset(Dataset):
     def scale_frequency(self, factor):
         """
         Scales frequency of all words by a fixed factor
+
         Note: new_freq = factor * old_freq
 
         Arguments:
-            factor {int/float} -- factor to scale frequencies by
+            factor (int or float): factor to scale frequencies by
+
+        Returns:
+            None
         """
         self.df["freq"] = self.df["freq"] * factor
         self.df["log_freq"] = np.log(self.df["freq"])
 
     def restrict_set(self, sets):
+        """
+        Restrict anchor sets for dilution factor
+
+        Arguments:
+            sets (list): set indices to be kept
+
+        Returns:
+            None
+        """
         assert 'set' in self.df.columns, "ERROR: Dataset cannot be restricted by sets"
         self.df = self.df.loc[self.df['set'].isin(sets)]
         self.df.reset_index(drop=True, inplace=True)
 
     def get_types(self):
+        """
+        Find the word types (categories) in the dataset
+
+        Returns:
+            (set): set of word types (categories) in the dataset
+        """
         return set(self.df['type'])
 

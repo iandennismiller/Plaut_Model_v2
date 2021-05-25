@@ -4,9 +4,11 @@ constants.py
 === SUMMARY ===
 Description     : Load information from config file
 Date Created    : July 19, 2020
-Last Updated    : July 29, 2020
+Last Updated    : September 28, 2020
 
 === UPDATE NOTES ===
+ > September 28, 2020
+    - class for plot types added
  > July 29, 2020
     - file documentation added
  > July 19, 2020
@@ -40,3 +42,14 @@ class WordTypes:
     plaut_types = ['HEC', 'HRI', 'HFE', 'LEC', 'LFRI', 'LFE']
     anchor_types = anchor_mapping.keys()
     probe_types = probe_mapping.keys()
+
+
+class PlotTypes:
+    TRAINING_LOSS = 'Training Loss'
+    PLAUT_ACCURACY = 'Training Accuracy'
+    ANCHOR_ACCURACY = 'Anchor Accuracy'
+    PROBE_ACCURACY = 'Probe Accuracy'
+    RUNNING_TIME = 'Running Time'
+
+    HIDDEN_SIMILARITY = 'Similarity Correlations'
+

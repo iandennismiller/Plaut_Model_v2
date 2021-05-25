@@ -3,14 +3,16 @@ plaut_model.py
 
 === SUMMARY ===
 Description     : Code for running a series of simulations
-Date Created    : May 03, 2020
-Last Updated    : August 5, 2020
+Date Created    : May 8, 2020
+Last Updated    : September 27, 2020
 
 === DETAILED DESCRIPTION ===
  > Given the parameters simulator_config.yaml file, this script will run a series of
    tests with combinations of anchor sets and random seeds
 
 === UPDATE NOTES ===
+ > September 27, 2020
+    - bug fix for sim config copy being edited after starting simulation
  > September 7, 2020
     - make a copy of simulator config in results folder
  > August 5, 2020
@@ -33,6 +35,7 @@ Last Updated    : August 5, 2020
 import argparse
 import logging
 import sys
+import os
 import yaml
 import shutil
 from simulator.simulator import Simulator
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     # parse and extract arguments
     args = parser.parse_args()
 
-    assert args.sim_type in ['series', 'single'], "ERROR: Must select sim_type as 'series' or 'single'"
+    assert args.sim_type in ['series', 'single'], "ERROR: sim_type must be either 'series' or 'single'"
 
     # set up logging
     logger = logging.getLogger(__name__)
@@ -99,19 +102,25 @@ if __name__ == "__main__":
             while len(up_sets) > 0:  # for each dilution level
                 logger.info(f"Testing with seed {seed} and anchor sets {up_sets}")
                 write_config_file(up_sets, seed)
+                shutil.copy('config/simulator_config.yaml', f'results/simulator_config.yaml')
                 folder = run_simulation(series=True)
-                shutil.copy('config/simulator_config.yaml', f'{folder}/simulator_config.yaml')
+                shutil.copy('results/simulator_config.yaml', f'{folder}/simulator_config.yaml')
+                os.remove('results/simulator_config.yaml')
                 up_sets.pop(-1)
 
             # downwards order
             while len(down_sets) > 0:  # for each dilution level
                 logger.info(f"Testing with seed {seed} and anchor sets {down_sets}")
                 write_config_file(down_sets, seed)
+                shutil.copy('config/simulator_config.yaml', f'results/simulator_config.yaml')
                 folder = run_simulation(series=True)
-                shutil.copy('config/simulator_config.yaml', f'{folder}/simulator_config.yaml')
+                shutil.copy('results/simulator_config.yaml', f'{folder}/simulator_config.yaml')
+                os.remove('results/simulator_config.yaml')
                 down_sets.pop(-1)
 
     else:
+        shutil.copy('config/simulator_config.yaml', f'results/simulator_config.yaml')
         folder = run_simulation(series=False)
-        shutil.copy('config/simulator_config.yaml', f'{folder}/simulator_config.yaml')
+        shutil.copy('results/simulator_config.yaml', f'{folder}/simulator_config.yaml')
+        os.remove('results/simulator_config.yaml')
 

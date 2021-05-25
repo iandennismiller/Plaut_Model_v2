@@ -14,7 +14,7 @@ Last Updated    : August 30, 2020
 
 from simulator.model import PlautNet
 from common.helpers import *
-from common.constants import VectorMapping
+from common.constants import PlotTypes
 import torch
 import pandas as pd
 import numpy as np
@@ -47,10 +47,13 @@ class HiddenSimilarity:
 
         self.checkpoint, self.epoch = None, None
         self.checkpoint2, self.epoch2 = None, None
+        self.result_dir, self.result_dir = None, None
         self.label = checkpoint_label.split('-')[0]+'_'+checkpoint_label.split('-')[-1]
 
+        self.result_dir = f'results/{checkpoint_label}'
         self.checkpoint, self.epoch = self.load_checkpoints(checkpoint_label)
         if checkpoint2_label:
+            self.result_dir2 = f'results/{checkpoint2_label}'
             self.checkpoint2, self.epoch2 = self.load_checkpoints(checkpoint2_label)
             if self.epoch != self.epoch2:
                 self.logger.error("Checkpoint epochs must be identical between the two checkpoint sets.")
@@ -119,7 +122,6 @@ class HiddenSimilarity:
 
     def create_plots(self, dataset_filename):
         test_dataset = pd.read_csv(f"dataset/{dataset_filename}")
-        regulars, exceptions, nonwords = None, None, None
         regulars2, exceptions2, nonwords2 = None, None, None
 
         # extract orthology of words
@@ -175,7 +177,7 @@ class HiddenSimilarity:
             nonwords = pd.concat([nonwords, nonwords2]).groupby(by='epoch').mean()
 
         sns.set_style('darkgrid')
-        fig, ax = plt.subplots(figsize=(12, 8))
+        fig, ax = plt.subplots(figsize=(9, 6))
         for i in ['orth_phon_corr', 'orth_hidden_corr', 'hidden_phon_corr']:
             regulars[i].plot.line(ax=ax, color=plot_colours['regular'], marker='.',
                                   linestyle=plot_linestyle[i], label=f'{plot_labels[i]} | Regular')
@@ -187,23 +189,11 @@ class HiddenSimilarity:
         plt.xlabel('Epoch')
         plt.ylabel('Correlation')
         plt.ylim(0.5, 1)
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.07), ncol=3)
-        plt.tight_layout()
-        plt.savefig(f'{self.label}.png', dpi=150)
+        plt.suptitle('Similarity Correlations (Plaut Figure 18)')
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.09), ncol=3)
+        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.savefig(f'{self.result_dir}/{PlotTypes.HIDDEN_SIMILARITY}.png', dpi=150)
+        if self.result_dir2 is not None:
+            plt.savefig(f'{self.result_dir2}/{PlotTypes.HIDDEN_SIMILARITY}.png', dpi=150)
 
-        # results = {}
-        # for i in ['orth_phon_corr', 'orth_hidden_corr', 'hidden_phon_corr']:
-        #     if self.checkpoint2:
-        #         results[plot_labels[i]] = [np.mean(nonwords[i].mean(), nonwords2[i].mean()),
-        #                                     np.mean(regulars[i].mean(), regulars2[i].mean()),
-        #                                     np.mean(exceptions[i].mean(), exceptions2[i].mean())]
-        #     results[plot_labels[i]] = [nonwords[i].mean(), regulars[i].mean(), exceptions[i].mean()]
-        #
-        # sns.set_style('darkgrid')
-        # results_df = pd.DataFrame(data=results, index=['Nonword', 'Regular', 'Exception'])
-        # results_df.T.plot.bar(rot=0)
-        # plt.xlabel('Representation Pair')
-        # plt.ylabel('Correlation')
-        # plt.ylim(0.5, 1)
-        # plt.show()
 
